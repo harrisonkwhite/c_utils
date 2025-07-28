@@ -73,6 +73,11 @@ static inline bool IsZero(const void* const mem, const size_t size) {
 
 #define IS_ZERO(x) IsZero(&(x), sizeof(x))
 
+static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t width) {
+    assert(x < width);
+    return (width * y) + x;
+}
+
 static inline void ActivateBit(const size_t bit_index, t_u8* const bytes, const size_t bit_cnt) {
     assert(bit_index < bit_cnt);
     assert(bytes);
