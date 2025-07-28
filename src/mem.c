@@ -3,7 +3,41 @@
 #include <stdlib.h>
 #include "io.h"
 
-bool MemArenaInit(s_mem_arena* const arena, const size_t size) {
+int FirstInactiveBitIndex(const t_u8* const bytes, const int bit_cnt) {
+    assert(bytes);
+    assert(bit_cnt > 0);
+
+    for (int i = 0; i < (bit_cnt / 8); i++) {
+        if (bytes[i] == 0xFF) {
+            continue;
+        }
+
+        for (int j = 0; j < 8; j++) {
+            if (!(bytes[i] & (1 << j))) {
+                return (i * 8) + j;
+            }
+        }
+    }
+
+    const int excess_bits = bit_cnt % 8;
+
+    if (excess_bits > 0) {
+        // Get the last byte, masking out any bits we don't care about.
+        const t_u8 last_byte = KeepFirstNBitsOfByte(bytes[bit_cnt / 8], excess_bits);
+
+        if (last_byte != 0xFF) {
+            for (int i = 0; i < 8; i++) {
+                if (!(last_byte & (1 << i))) {
+                    return bit_cnt - excess_bits + i;
+                }
+            }
+        }
+    }
+    
+    return -1;
+}
+
+bool InitMemArena(s_mem_arena* const arena, const size_t size) {
     assert(arena && IS_ZERO(*arena));
     assert(size > 0);
 
@@ -21,14 +55,14 @@ bool MemArenaInit(s_mem_arena* const arena, const size_t size) {
     return true;
 }
 
-void MemArenaClean(s_mem_arena* const arena) {
+void CleanMemArena(s_mem_arena* const arena) {
     assert(arena && IsMemArenaValid(arena));
 
     free(arena->buf);
     ZERO_OUT(*arena);
 }
 
-void* MemArenaPush(s_mem_arena* const arena, const size_t size, const size_t alignment) {
+void* PushToMemArena(s_mem_arena* const arena, const size_t size, const size_t alignment) {
     assert(arena && IsMemArenaValid(arena));
     assert(size > 0);
     assert(IsAlignmentValid(alignment));
@@ -46,7 +80,7 @@ void* MemArenaPush(s_mem_arena* const arena, const size_t size, const size_t ali
     return arena->buf + offs_aligned;
 }
 
-void MemArenaRewind(s_mem_arena* const arena, const size_t rewind_offs) {
+void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs) {
     assert(arena && IsMemArenaValid(arena));
     assert(rewind_offs <= arena->offs);
 

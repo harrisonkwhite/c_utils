@@ -7,6 +7,7 @@ add_library(c_utils STATIC
     src/mem.c
     src/io.c
 
+    include/cu.h
     include/mem.h
     include/io.h
 )
