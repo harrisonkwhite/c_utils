@@ -1,33 +1,10 @@
 #include "io.h"
 
-#include <stdio.h>
-#include <stdarg.h>
 #if defined(_WIN32)
 #include <windows.h>
 #else
 #include <dirent.h>
 #endif
-
-void Log(const char* const format, ...) {
-    va_list args;
-    va_start(args, format);
-
-    vprintf(format, args);
-    printf("\n");
-
-    va_end(args);
-}
-
-void LogError(const char* const format, ...) {
-    va_list args;
-    va_start(args, format);
-
-    fprintf(stderr, "Error: ");
-    vfprintf(stderr, format, args);
-    fprintf(stderr, "\n");
-
-    va_end(args);
-}
 
 bool DoesFilenameHaveExt(const char* const filename, const char* const ext) {
     assert(filename);
@@ -49,7 +26,7 @@ t_u8* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem
     FILE* const fs = fopen(file_path, "rb");
 
     if (!fs) {
-        fprintf(stderr, "Failed to open \"%s\"!\n", file_path);
+        LOG_ERROR("Failed to open \"%s\"!", file_path);
         return NULL;
     }
 
@@ -66,7 +43,7 @@ t_u8* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem
     const size_t read_cnt = fread(contents, 1, file_size, fs);
     
     if (read_cnt != file_size) {
-        fprintf(stderr, "Failed to read the contents of \"%s\"!\n", file_path);
+        LOG_ERROR("Failed to read the contents of \"%s\"!", file_path);
         return NULL;
     }
 
