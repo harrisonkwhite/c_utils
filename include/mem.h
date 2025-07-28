@@ -18,6 +18,13 @@
 
 #define SIZE_IN_BITS(x) BYTES_TO_BITS(sizeof(x))
 
+#ifdef _MSC_VER
+#define ALIGN_OF(x) __alignof(x)
+#else
+#include <stdalign.h>
+#define ALIGN_OF(x) alignof(x)
+#endif
+
 typedef int8_t t_s8;
 typedef uint8_t t_u8;
 typedef int16_t t_s16;
@@ -27,16 +34,30 @@ typedef uint32_t t_u32;
 typedef int64_t t_s64;
 typedef uint64_t t_u64;
 
+typedef struct {
+    t_u8* buf;
+    size_t size;
+    size_t offs;
+} s_mem_arena;
+
+static inline bool IsMemArenaValid(const s_mem_arena* const arena) {
+    assert(arena);
+    return arena->buf && arena->size > 0 && arena->offs <= arena->size;
+}
+
+t_s32 FirstInactiveBitIndex(const t_u8* const bytes, const t_s32 bit_cnt); // Returns -1 if an inactive bit is not found.
+
+bool InitMemArena(s_mem_arena* const arena, const size_t size);
+void CleanMemArena(s_mem_arena* const arena);
+void* PushToMemArena(s_mem_arena* const arena, const size_t size, const size_t alignment);
+void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs);
+
+#define MEM_ARENA_PUSH_TYPE(arena, type) (type*)PushToMemArena(arena, sizeof(type), ALIGN_OF(type))
+#define MEM_ARENA_PUSH_TYPE_CNT(arena, type, cnt) (type*)PushToMemArena(arena, sizeof(type) * (cnt), ALIGN_OF(type))
+
 static inline bool IsPowerOfTwo(const size_t n) {
     return n > 0 && (n & (n - 1)) == 0;
 }
-
-#ifdef _MSC_VER
-#define ALIGN_OF(x) __alignof(x)
-#else
-#include <stdalign.h>
-#define ALIGN_OF(x) alignof(x)
-#endif
 
 static inline bool IsAlignmentValid(const size_t n) {
     return n > 0 && IsPowerOfTwo(n);
@@ -106,26 +127,5 @@ static inline t_u8 KeepFirstNBitsOfByte(const t_u8 byte, const size_t n) {
     assert(n <= 8);
     return byte & ((1 << n) - 1);
 }
-
-t_s32 FirstInactiveBitIndex(const t_u8* const bytes, const t_s32 bit_cnt); // Returns -1 if an inactive bit is not found.
-
-typedef struct {
-    t_u8* buf;
-    size_t size;
-    size_t offs;
-} s_mem_arena;
-
-static inline bool IsMemArenaValid(const s_mem_arena* const arena) {
-    assert(arena);
-    return arena->buf && arena->size > 0 && arena->offs <= arena->size;
-}
-
-bool InitMemArena(s_mem_arena* const arena, const size_t size);
-void CleanMemArena(s_mem_arena* const arena);
-void* PushToMemArena(s_mem_arena* const arena, const size_t size, const size_t alignment);
-void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs);
-
-#define MEM_ARENA_PUSH_TYPE(arena, type) (type*)PushToMemArena(arena, sizeof(type), ALIGN_OF(type))
-#define MEM_ARENA_PUSH_TYPE_CNT(arena, type, cnt) (type*)PushToMemArena(arena, sizeof(type) * (cnt), ALIGN_OF(type))
 
 #endif
