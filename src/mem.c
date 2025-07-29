@@ -44,7 +44,7 @@ bool InitMemArena(s_mem_arena* const arena, const size_t size) {
     arena->buf = malloc(size);
 
     if (!arena->buf) {
-        LogError("Failed to initialise memory arena of size %zu bytes!", size);
+        LOG_ERROR("Failed to initialise memory arena of size %zu bytes!", size);
         return false;
     }
 
@@ -71,7 +71,7 @@ void* PushToMemArena(s_mem_arena* const arena, const size_t size, const size_t a
     const size_t offs_next = offs_aligned + size;
 
     if (offs_next > arena->size) {
-        LogError("Failed to push %zu bytes to memory arena!", size);
+        LOG_ERROR("Failed to push %zu bytes to memory arena!", size);
         return NULL;
     }
 
