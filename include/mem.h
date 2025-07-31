@@ -99,25 +99,25 @@ static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t wi
     return (width * y) + x;
 }
 
-static inline void ActivateBit(const size_t bit_index, t_u8* const bytes, const size_t bit_cnt) {
-    assert(bit_index < bit_cnt);
+static inline void ActivateBit(t_u8* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
+    assert(bit_index < bit_cnt);
     assert(bit_cnt > 0);
 
     bytes[bit_index / 8] |= 1 << (bit_index % 8);
 }
 
-static inline void DeactivateBit(const size_t bit_index, t_u8* const bytes, const size_t bit_cnt) {
-    assert(bit_index < bit_cnt);
+static inline void DeactivateBit(t_u8* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
+    assert(bit_index < bit_cnt);
     assert(bit_cnt > 0);
 
     bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
 }
 
-static inline bool IsBitActive(const size_t bit_index, const t_u8* const bytes, const size_t bit_cnt) {
-    assert(bit_index < bit_cnt);
+static inline bool IsBitActive(const t_u8* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
+    assert(bit_index < bit_cnt);
     assert(bit_cnt > 0);
 
     return bytes[bit_index / 8] & (1 << (bit_index % 8));
