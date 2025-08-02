@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include "mem.h"
+#include "cu_mem.h"
 
 #define ANSI_ESC "\x1b"
 

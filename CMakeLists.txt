@@ -4,12 +4,13 @@ project(c_utils C)
 set(CMAKE_C_STANDARD 11)
 
 add_library(c_utils STATIC
-    src/mem.c
-    src/io.c
+    src/cu_mem.c
+    src/cu_io.c
 
     include/cu.h
-    include/mem.h
-    include/io.h
+    include/cu_mem.h
+    include/cu_math.h
+    include/cu_io.h
 )
 
 target_include_directories(c_utils PUBLIC

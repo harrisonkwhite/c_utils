@@ -1,7 +1,7 @@
-#include "mem.h"
+#include "cu_mem.h"
 
 #include <stdlib.h>
-#include "io.h"
+#include "cu_io.h"
 
 int FirstInactiveBitIndex(const t_u8* const bytes, const int bit_cnt) {
     assert(bytes);
