@@ -19,7 +19,7 @@ bool DoesFilenameHaveExt(const char* const filename, const char* const ext) {
     return strcmp(ext_actual, ext) == 0;
 }
 
-t_u8* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena, const bool incl_terminating_byte) {
+t_byte* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena, const bool incl_terminating_byte) {
     assert(file_path);
     assert(mem_arena && IsMemArenaValid(mem_arena));
 
@@ -34,7 +34,7 @@ t_u8* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem
     const size_t file_size = ftell(fs);
     fseek(fs, 0, SEEK_SET);
 
-    t_u8* const contents = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, t_u8, incl_terminating_byte ? (file_size + 1) : file_size);
+    t_byte* const contents = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, t_byte, incl_terminating_byte ? (file_size + 1) : file_size);
 
     if (!contents) {
         return NULL;

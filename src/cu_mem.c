@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "cu_io.h"
 
-int FirstInactiveBitIndex(const t_u8* const bytes, const int bit_cnt) {
+int FirstInactiveBitIndex(const t_byte* const bytes, const size_t bit_cnt) {
     assert(bytes);
     assert(bit_cnt > 0);
 
@@ -23,7 +23,7 @@ int FirstInactiveBitIndex(const t_u8* const bytes, const int bit_cnt) {
 
     if (excess_bits > 0) {
         // Get the last byte, masking out any bits we don't care about.
-        const t_u8 last_byte = KeepFirstNBitsOfByte(bytes[bit_cnt / 8], excess_bits);
+        const t_byte last_byte = KeepFirstNBitsOfByte(bytes[bit_cnt / 8], excess_bits);
 
         if (last_byte != 0xFF) {
             for (int i = 0; i < 8; i++) {

@@ -25,17 +25,10 @@
 #define ALIGN_OF(x) alignof(x)
 #endif
 
-typedef int8_t t_s8;
-typedef uint8_t t_u8;
-typedef int16_t t_s16;
-typedef uint16_t t_u16;
-typedef int32_t t_s32;
-typedef uint32_t t_u32;
-typedef int64_t t_s64;
-typedef uint64_t t_u64;
+typedef unsigned char t_byte;
 
 typedef struct {
-    t_u8* buf;
+    t_byte* buf;
     size_t size;
     size_t offs;
 } s_mem_arena;
@@ -45,7 +38,7 @@ static inline bool IsMemArenaValid(const s_mem_arena* const arena) {
     return arena->buf && arena->size > 0 && arena->offs <= arena->size;
 }
 
-t_s32 FirstInactiveBitIndex(const t_u8* const bytes, const t_s32 bit_cnt); // Returns -1 if an inactive bit is not found.
+int FirstInactiveBitIndex(const t_byte* const bytes, const size_t bit_cnt); // Returns -1 if an inactive bit is not found.
 
 bool InitMemArena(s_mem_arena* const arena, const size_t size);
 void CleanMemArena(s_mem_arena* const arena);
@@ -81,7 +74,7 @@ static inline bool IsZero(const void* const mem, const size_t size) {
     assert(mem);
     assert(size > 0);
 
-    const t_u8* const mem_u8 = mem;
+    const t_byte* const mem_u8 = mem;
 
     for (size_t i = 0; i < size; i++) {
         if (mem_u8[i]) {
@@ -99,7 +92,7 @@ static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t wi
     return (width * y) + x;
 }
 
-static inline void ActivateBit(t_u8* const bytes, const size_t bit_index, const size_t bit_cnt) {
+static inline void ActivateBit(t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
     assert(bit_index < bit_cnt);
     assert(bit_cnt > 0);
@@ -107,7 +100,7 @@ static inline void ActivateBit(t_u8* const bytes, const size_t bit_index, const 
     bytes[bit_index / 8] |= 1 << (bit_index % 8);
 }
 
-static inline void DeactivateBit(t_u8* const bytes, const size_t bit_index, const size_t bit_cnt) {
+static inline void DeactivateBit(t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
     assert(bit_index < bit_cnt);
     assert(bit_cnt > 0);
@@ -115,7 +108,7 @@ static inline void DeactivateBit(t_u8* const bytes, const size_t bit_index, cons
     bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
 }
 
-static inline bool IsBitActive(const t_u8* const bytes, const size_t bit_index, const size_t bit_cnt) {
+static inline bool IsBitActive(const t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
     assert(bit_index < bit_cnt);
     assert(bit_cnt > 0);
@@ -123,7 +116,7 @@ static inline bool IsBitActive(const t_u8* const bytes, const size_t bit_index, 
     return bytes[bit_index / 8] & (1 << (bit_index % 8));
 }
 
-static inline t_u8 KeepFirstNBitsOfByte(const t_u8 byte, const size_t n) {
+static inline t_byte KeepFirstNBitsOfByte(const t_byte byte, const size_t n) {
     assert(n <= 8);
     return byte & ((1 << n) - 1);
 }

@@ -63,7 +63,7 @@ typedef struct {
 } s_filenames;
 
 bool DoesFilenameHaveExt(const char* const filename, const char* const ext);
-t_u8* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena, const bool incl_terminating_byte);
+t_byte* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena, const bool incl_terminating_byte);
 bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem_arena, const char* const dir_param);
 
 #endif
