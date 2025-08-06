@@ -92,6 +92,39 @@ static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t wi
     return (width * y) + x;
 }
 
+#define DECLARE_ARRAY_TYPE(type, name_snake, name_pascal) \
+    typedef struct { \
+        type* buf; \
+        int len; \
+    } s_##name_snake##_array; \
+    \
+    static inline void name_pascal##Array_AssertValidity(const s_##name_snake##_array* const array) { \
+        assert(array); \
+        assert(array->buf); \
+        assert(array->len >= 0); \
+    } \
+    \
+    static inline type* name_pascal##Array_Get(const s_##name_snake##_array* const array, const int index) { \
+        name_pascal##Array_AssertValidity(array); \
+        assert(index >= 0 && index < array->len); \
+        return &array->buf[index]; \
+    } \
+    \
+    static inline s_##name_snake##_array Push##name_pascal##s(s_mem_arena* const mem_arena, const int cnt) { \
+        type* const buf = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, type, cnt); \
+        if (!buf) { \
+            return (s_##name_snake##_array){0}; \
+        } \
+        return (s_##name_snake##_array){ \
+            .buf = buf, \
+            .len = cnt \
+        }; \
+    }
+
+DECLARE_ARRAY_TYPE(int, int, Int)
+DECLARE_ARRAY_TYPE(float, float, Float)
+DECLARE_ARRAY_TYPE(double, double, Double)
+
 static inline void ActivateBit(t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
     assert(bit_index < bit_cnt);

@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <assert.h>
+#include "cu_mem.h"
 
 #define PI 3.14159265358979323846f
 #define TAU 6.28318530717958647692f
@@ -20,10 +21,14 @@ typedef struct {
     float y;
 } s_v2;
 
+DECLARE_ARRAY_TYPE(s_v2, v2, V2);
+
 typedef struct {
     int x;
     int y;
 } s_v2_int;
+
+DECLARE_ARRAY_TYPE(s_v2_int, v2_int, V2Int);
 
 typedef union {
     struct {
@@ -38,6 +43,8 @@ typedef union {
         float b;
     };
 } u_v3;
+
+DECLARE_ARRAY_TYPE(u_v3, v3, V3);
 
 typedef union {
     struct {
@@ -54,6 +61,8 @@ typedef union {
         float a;
     };
 } u_v4;
+
+DECLARE_ARRAY_TYPE(u_v4, v4, V4);
 
 static inline float Lerp(const float a, const float b, const float t) {
     assert(t >= 0.0f && t <= 1.0f);
