@@ -121,9 +121,10 @@ static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t wi
         }; \
     }
 
-DECLARE_ARRAY_TYPE(int, int, Int)
-DECLARE_ARRAY_TYPE(float, float, Float)
-DECLARE_ARRAY_TYPE(double, double, Double)
+DECLARE_ARRAY_TYPE(int, int, Int);
+DECLARE_ARRAY_TYPE(float, float, Float);
+DECLARE_ARRAY_TYPE(double, double, Double);
+DECLARE_ARRAY_TYPE(t_byte, byte, Byte);
 
 static inline void ActivateBit(t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
     assert(bytes);
