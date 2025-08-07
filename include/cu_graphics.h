@@ -57,13 +57,13 @@ typedef struct {
     int res_limit;
 } s_gl_resource_arena;
 
-static inline void AssertGLResourceArenaValidity(const s_gl_resource_arena* const res_arena) {
+static inline void GLResourceArena_AssertValidity(const s_gl_resource_arena* const res_arena) {
     assert(res_arena);
 
-    GLIDArray_AssertValidity(&res_arena->ids);
+    GLIDArray_AssertValidity(res_arena->ids);
     assert(res_arena->ids.len == res_arena->res_limit);
 
-    GLResourceTypeArray_AssertValidity(&res_arena->res_types);
+    GLResourceTypeArray_AssertValidity(res_arena->res_types);
     assert(res_arena->res_types.len == res_arena->res_limit);
 
     assert(res_arena->res_used >= 0);
@@ -78,82 +78,95 @@ typedef struct {
     int cnt;
 } s_texture_group;
 
-static inline void AssertTextureGroupValidity(const s_texture_group* const tex_group) {
+static inline void TextureGroup_AssertValidity(const s_texture_group* const tex_group) {
     assert(tex_group);
 
-    GLIDArray_AssertValidity(&tex_group->gl_ids);
+    GLIDArray_AssertValidity(tex_group->gl_ids);
     assert(tex_group->gl_ids.len == tex_group->cnt);
 
-    V2IntArray_AssertValidity(&tex_group->sizes);
+    V2IntArray_AssertValidity(tex_group->sizes);
     assert(tex_group->sizes.len == tex_group->cnt);
 
     assert(tex_group->cnt > 0);
 
     for (int i = 0; i < tex_group->cnt; i++) {
-        assert(glIsTexture(*GLIDArray_Get(&tex_group->gl_ids, i)));
+        assert(glIsTexture(*GLIDArray_Get(tex_group->gl_ids, i)));
 
-        const s_v2_int size = *V2IntArray_Get(&tex_group->sizes, i);
+        const s_v2_int size = *V2IntArray_Get(tex_group->sizes, i);
         assert(size.x > 0 && size.y > 0);
     }
 }
 
 typedef struct {
-    const t_byte* rgba_px_data;
+    const s_byte_array rgba_px_data;
     s_v2_int tex_size;
 } s_texture_info;
 
-static inline void AssertTextureInfoValidity(const s_texture_info* const tex_info) {
+static inline void TextureInfo_AssertValidity(const s_texture_info* const tex_info) {
     assert(tex_info);
 
-    assert(tex_info->rgba_px_data);
+    ByteArray_AssertValidity(tex_info->rgba_px_data);
     assert(tex_info->tex_size.x > 0 && tex_info->tex_size.y > 0);
 }
 
 typedef s_texture_info (*t_gen_texture_info_func)(const int tex_index, s_mem_arena* const mem_arena);
 
+DECLARE_STATIC_ARRAY_TYPE(s_v2_int, ASCII_PRINTABLE_RANGE_LEN, font_chr_offsets, FontChrOffsets);
+DECLARE_STATIC_ARRAY_TYPE(s_v2_int, ASCII_PRINTABLE_RANGE_LEN, font_chr_sizes, FontChrSizes);
+DECLARE_STATIC_ARRAY_TYPE(int, ASCII_PRINTABLE_RANGE_LEN, font_chr_advances, FontChrAdvances);
+
 typedef struct {
     int line_height;
 
-    s_v2_int chr_offsets[ASCII_PRINTABLE_RANGE_LEN];
-    s_v2_int chr_sizes[ASCII_PRINTABLE_RANGE_LEN];
-    int chr_advances[ASCII_PRINTABLE_RANGE_LEN];
+    s_font_chr_offsets chr_offsets;
+    s_font_chr_sizes chr_sizes;
+    s_font_chr_advances chr_advances;
 } s_font_arrangement_info;
 
-static inline void AssertFontArrangementInfoValidity(const s_font_arrangement_info* const arrangement_info) {
-    assert(arrangement_info);
+DECLARE_ARRAY_TYPE(s_font_arrangement_info, font_arrangement_info, FontArrangementInfo);
 
-    assert(arrangement_info->line_height > 0);
+static inline void FontArrangementInfo_AssertValidity(const s_font_arrangement_info* const info) {
+    assert(info);
+
+    assert(info->line_height > 0);
 
     for (int i = 1; i < ASCII_PRINTABLE_RANGE_LEN; i++) {
-        assert(arrangement_info->chr_sizes[i].x > 0 && arrangement_info->chr_sizes[i].y > 0);
-        assert(arrangement_info->chr_advances[i] >= 0);
+        const s_v2_int chr_size = *FontChrSizes_GetConst(&info->chr_sizes, i);
+        assert(chr_size.x > 0 && chr_size.y > 0);
+
+        const int chr_advance = *FontChrAdvances_GetConst(&info->chr_advances, i);
+        assert(chr_advance >= 0);
     }
 }
 
-typedef s_v2_int t_tex_chr_positions[ASCII_PRINTABLE_RANGE_LEN];
+DECLARE_STATIC_ARRAY_TYPE(s_v2_int, ASCII_PRINTABLE_RANGE_LEN, font_tex_chr_positions, FontTexChrPositions);
+DECLARE_ARRAY_TYPE(s_font_tex_chr_positions, font_tex_chr_positions, FontTexChrPositions);
 
 typedef struct {
-    const s_font_arrangement_info* arrangement_infos;
-    const t_gl_id* tex_gl_ids;
-    const s_v2_int* tex_sizes;
-    const t_tex_chr_positions* tex_chr_positions;
+    s_font_arrangement_info_array arrangement_infos;
+    s_gl_id_array tex_gl_ids;
+    s_v2_int_array tex_sizes;
+    s_font_tex_chr_positions_array tex_chr_positions;
 
     int cnt;
 } s_font_group;
 
-static inline void AssertFontGroupValidity(const s_font_group* const font_group) {
+static inline void FontGroup_AssertValidity(const s_font_group* const font_group) {
     assert(font_group);
 
-    assert(font_group->arrangement_infos);
-    assert(font_group->tex_gl_ids);
-    assert(font_group->tex_sizes);
-    assert(font_group->tex_chr_positions);
+    FontArrangementInfoArray_AssertValidity(font_group->arrangement_infos);
+    GLIDArray_AssertValidity(font_group->tex_gl_ids);
+    V2IntArray_AssertValidity(font_group->tex_sizes);
+    FontTexChrPositionsArray_AssertValidity(font_group->tex_chr_positions);
     assert(font_group->cnt > 0);
 
     for (int i = 0; i < font_group->cnt; i++) {
-        assert(glIsTexture(font_group->tex_gl_ids[i]));
-        assert(font_group->tex_sizes[i].x > 0 && font_group->tex_sizes[i].y > 0);
-        AssertFontArrangementInfoValidity(&font_group->arrangement_infos[i]);
+        assert(glIsTexture(*GLIDArray_Get(font_group->tex_gl_ids, i)));
+
+        const s_v2_int tex_size = *V2IntArray_Get(font_group->tex_sizes, i);
+        assert(tex_size.x > 0 && tex_size.y > 0);
+
+        FontArrangementInfo_AssertValidity(FontArrangementInfoArray_Get(font_group->arrangement_infos, i));
     }
 }
 
@@ -176,10 +189,10 @@ typedef struct {
 static inline void AssertShaderProgGroupValidity(const s_shader_prog_group* const prog_group) {
     assert(prog_group);
 
-    GLIDArray_AssertValidity(&prog_group->gl_ids);
+    GLIDArray_AssertValidity(prog_group->gl_ids);
 
     for (int i = 0; i < prog_group->gl_ids.len; i++) {
-        assert(glIsProgram(*GLIDArray_Get(&prog_group->gl_ids, i)));
+        assert(glIsProgram(*GLIDArray_Get(prog_group->gl_ids, i)));
     }
 }
 
@@ -239,25 +252,25 @@ typedef struct {
 static inline void AssertRenderablesValidity(const s_renderables* const renderables) {
     assert(renderables);
 
-    GLIDArray_AssertValidity(&renderables->vert_array_gl_ids);
+    GLIDArray_AssertValidity(renderables->vert_array_gl_ids);
     assert(renderables->vert_array_gl_ids.len == renderables->cnt);
 
-    GLIDArray_AssertValidity(&renderables->vert_buf_gl_ids);
+    GLIDArray_AssertValidity(renderables->vert_buf_gl_ids);
     assert(renderables->vert_buf_gl_ids.len == renderables->cnt);
 
-    GLIDArray_AssertValidity(&renderables->elem_buf_gl_ids);
+    GLIDArray_AssertValidity(renderables->elem_buf_gl_ids);
     assert(renderables->elem_buf_gl_ids.len == renderables->cnt);
 
     assert(renderables->cnt > 0);
 
     for (int i = 0; i < renderables->cnt; i++) {
-        const t_gl_id va_gl_id = *GLIDArray_Get(&renderables->vert_array_gl_ids, i);
+        const t_gl_id va_gl_id = *GLIDArray_Get(renderables->vert_array_gl_ids, i);
         assert(glIsVertexArray(va_gl_id));
 
-        const t_gl_id vb_gl_id = *GLIDArray_Get(&renderables->vert_buf_gl_ids, i);
+        const t_gl_id vb_gl_id = *GLIDArray_Get(renderables->vert_buf_gl_ids, i);
         assert(glIsBuffer(vb_gl_id));
 
-        const t_gl_id eb_gl_id = *GLIDArray_Get(&renderables->elem_buf_gl_ids, i);
+        const t_gl_id eb_gl_id = *GLIDArray_Get(renderables->elem_buf_gl_ids, i);
         assert(glIsBuffer(eb_gl_id));
     }
 }
@@ -265,7 +278,7 @@ static inline void AssertRenderablesValidity(const s_renderables* const renderab
 typedef struct {
     s_gl_id_array fb_gl_ids;
     s_gl_id_array fb_tex_gl_ids;
-    s_v2_int* sizes;
+    s_v2_int_array sizes;
 
     int cnt;
 } s_surface_group;
@@ -273,20 +286,23 @@ typedef struct {
 static inline void AssertSurfaceGroupValidity(const s_surface_group* const surfs) {
     assert(surfs);
 
-    GLIDArray_AssertValidity(&surfs->fb_gl_ids);
+    GLIDArray_AssertValidity(surfs->fb_gl_ids);
     assert(surfs->fb_gl_ids.len == surfs->cnt);
 
-    GLIDArray_AssertValidity(&surfs->fb_tex_gl_ids);
+    GLIDArray_AssertValidity(surfs->fb_tex_gl_ids);
     assert(surfs->fb_tex_gl_ids.len == surfs->cnt);
 
-    assert(surfs->sizes);
+    V2IntArray_AssertValidity(surfs->sizes);
+    assert(surfs->sizes.len == surfs->cnt);
 
     assert(surfs->cnt > 0);
 
     for (int i = 0; i < surfs->cnt; i++) {
-        assert(glIsFramebuffer(*GLIDArray_Get(&surfs->fb_gl_ids, i)));
-        assert(glIsTexture(*GLIDArray_Get(&surfs->fb_tex_gl_ids, i)));
-        assert(surfs->sizes[i].x > 0 && surfs->sizes[i].y > 0);
+        assert(glIsFramebuffer(*GLIDArray_Get(surfs->fb_gl_ids, i)));
+        assert(glIsTexture(*GLIDArray_Get(surfs->fb_tex_gl_ids, i)));
+
+        const s_v2_int size = *V2IntArray_Get(surfs->sizes, i);
+        assert(size.x > 0 && size.y > 0);
     }
 }
 
@@ -299,14 +315,14 @@ s_texture_group GenTextures(const int tex_cnt, const t_gen_texture_info_func gen
 s_rect_edges TextureCoords(const s_rect_int src_rect, const s_v2_int tex_size);
 
 s_font_group GenFonts(const int font_cnt, const s_font_info* const font_infos, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const mem_arena, s_mem_arena* const temp_mem_arena);
-s_v2* PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const str, const s_font_group* const fonts, const int font_index, const s_v2 pos, const s_v2 alignment);
+s_v2_array PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const str, const s_font_group* const fonts, const int font_index, const s_v2 pos, const s_v2 alignment);
 bool LoadStrCollider(s_rect* const rect, const char* const str, const s_font_group* const fonts, const int font_index, const s_v2 pos, const s_v2 alignment, s_mem_arena* const temp_mem_arena);
 
 s_shader_prog_group GenShaderProgs(const int prog_cnt, const s_shader_prog_gen_info* const prog_gen_infos, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const temp_mem_arena);
 
 void GenRenderable(t_gl_id* const va_gl_id, t_gl_id* const vb_gl_id, t_gl_id* const eb_gl_id, const float* const vert_buf, const size_t vert_buf_size, const unsigned short* const elem_buf, const size_t elem_buf_size, const int* const vert_attr_lens, const int vert_attr_cnt);
 
-s_surface_group GenSurfaces(const int surf_cnt, const s_v2_int* const surf_sizes, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const mem_arena);
+s_surface_group GenSurfaces(const int surf_cnt, const s_v2_int_array surf_sizes, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const mem_arena);
 bool ResizeSurface(s_surface_group* const surfs, const int surf_index, const s_v2_int size);
 
 static inline bool IsOriginValid(const s_v2 orig) {

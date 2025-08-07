@@ -32,10 +32,10 @@ bool InitGLResourceArena(s_gl_resource_arena* const res_arena, s_mem_arena* cons
 }
 
 void CleanGLResourceArena(s_gl_resource_arena* const res_arena) {
-    AssertGLResourceArenaValidity(res_arena);
+    GLResourceArena_AssertValidity(res_arena);
 
     for (int i = 0; i < res_arena->res_used; i++) {
-        const t_gl_id gl_id = *GLIDArray_Get(&res_arena->ids, i);
+        const t_gl_id gl_id = *GLIDArray_Get(res_arena->ids, i);
 
         if (!gl_id) {
             continue;
@@ -67,7 +67,7 @@ void CleanGLResourceArena(s_gl_resource_arena* const res_arena) {
 }
 
 s_gl_id_array ReserveGLIDs(s_gl_resource_arena* const res_arena, const int cnt, const e_gl_resource_type res_type) {
-    AssertGLResourceArenaValidity(res_arena);
+    GLResourceArena_AssertValidity(res_arena);
     assert(cnt > 0);
     assert(res_type < eks_gl_resource_type_cnt);
 
@@ -78,7 +78,7 @@ s_gl_id_array ReserveGLIDs(s_gl_resource_arena* const res_arena, const int cnt, 
 
     const int res_used_prev = res_arena->res_used;
     res_arena->res_used += cnt;
-    return (s_gl_id_array){(res_arena->ids.buf + res_used_prev), cnt};
+    return (s_gl_id_array){(res_arena->ids.buf_raw + res_used_prev), cnt};
 }
 
 static inline s_v2_int GLTextureSizeLimit() {
@@ -87,8 +87,8 @@ static inline s_v2_int GLTextureSizeLimit() {
     return (s_v2_int){size, size};
 }
 
-static t_gl_id GenGLTextureFromRGBAPixelData(const t_byte* const rgba_px_data, const s_v2_int tex_size) {
-    assert(rgba_px_data);
+static t_gl_id GenGLTextureFromRGBAPixelData(const s_byte_array rgba_px_data, const s_v2_int tex_size) {
+    ByteArray_AssertValidity(rgba_px_data);
     assert(tex_size.x > 0 && tex_size.y > 0);
 
     const s_v2_int tex_size_limit = GLTextureSizeLimit();
@@ -106,7 +106,7 @@ static t_gl_id GenGLTextureFromRGBAPixelData(const t_byte* const rgba_px_data, c
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_size.x, tex_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba_px_data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_size.x, tex_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba_px_data.buf_raw);
 
     return tex_gl_id;
 }
@@ -133,7 +133,7 @@ s_texture_info GenTextureInfoFromFile(const char* const file_path, s_mem_arena* 
 s_texture_group GenTextures(const int tex_cnt, const t_gen_texture_info_func gen_tex_info_func, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const mem_arena, s_mem_arena* const temp_mem_arena) {
     assert(tex_cnt > 0);
     assert(gen_tex_info_func);
-    AssertGLResourceArenaValidity(gl_res_arena);
+    GLResourceArena_AssertValidity(gl_res_arena);
     assert(mem_arena && IsMemArenaValid(mem_arena));
     assert(temp_mem_arena && IsMemArenaValid(temp_mem_arena));
 
@@ -159,14 +159,14 @@ s_texture_group GenTextures(const int tex_cnt, const t_gen_texture_info_func gen
             return (s_texture_group){0};
         }
 
-        *GLIDArray_Get(&gl_ids, i) = GenGLTextureFromRGBAPixelData(tex_info.rgba_px_data, tex_info.tex_size);
+        *GLIDArray_Get(gl_ids, i) = GenGLTextureFromRGBAPixelData(tex_info.rgba_px_data, tex_info.tex_size);
 
-        if (!(*GLIDArray_Get(&gl_ids, i))) {
+        if (!(*GLIDArray_Get(gl_ids, i))) {
             LOG_ERROR("Failed to generate OpenGL texture from RGBA pixel data for texture with index %d!", i);
             return (s_texture_group){0};
         }
 
-        *V2IntArray_Get(&sizes, i) = tex_info.tex_size;
+        *V2IntArray_Get(sizes, i) = tex_info.tex_size;
     }
 
     return (s_texture_group){
@@ -206,19 +206,24 @@ static void LoadFontArrangementInfo(s_font_arrangement_info* const arrangement_i
         s_rect_edges_int bitmap_box;
         stbtt_GetCodepointBitmapBox(stb_font_info, chr, scale, scale, &bitmap_box.left, &bitmap_box.top, &bitmap_box.right, &bitmap_box.bottom);
 
-        arrangement_info->chr_offsets[i] = (s_v2_int){bitmap_box.left, bitmap_box.top + (vm_ascent * scale)};
-        arrangement_info->chr_sizes[i] = (s_v2_int){bitmap_box.right - bitmap_box.left, bitmap_box.bottom - bitmap_box.top};
+        s_v2_int* const chr_offs = FontChrOffsets_Get(&arrangement_info->chr_offsets, i);
+        *chr_offs = (s_v2_int){bitmap_box.left, bitmap_box.top + (vm_ascent * scale)};
+
+        s_v2_int* const chr_size = FontChrSizes_Get(&arrangement_info->chr_sizes, i);
+        *chr_size = (s_v2_int){bitmap_box.right - bitmap_box.left, bitmap_box.bottom - bitmap_box.top};
 
         int hm_advance;
         stbtt_GetCodepointHMetrics(stb_font_info, chr, &hm_advance, NULL);
-        arrangement_info->chr_advances[i] = hm_advance * scale;
+
+        int* const chr_advance = FontChrAdvances_Get(&arrangement_info->chr_advances, i);
+        *chr_advance = hm_advance * scale;
     }
 }
 
-static void LoadFontTextureInfo(s_v2_int* const tex_size, t_tex_chr_positions* const tex_chr_positions, const s_font_arrangement_info* const arrangement_info, const int tex_width_limit) {
+static void LoadFontTextureInfo(s_v2_int* const tex_size, s_font_tex_chr_positions* const tex_chr_positions, const s_font_arrangement_info* const arrangement_info, const int tex_width_limit) {
     assert(tex_size && IS_ZERO(*tex_size));
     assert(tex_chr_positions && IS_ZERO(*tex_chr_positions));
-    AssertFontArrangementInfoValidity(arrangement_info);
+    FontArrangementInfo_AssertValidity(arrangement_info);
     assert(tex_width_limit > 0);
 
     s_v2_int chr_pos = {0};
@@ -227,7 +232,7 @@ static void LoadFontTextureInfo(s_v2_int* const tex_size, t_tex_chr_positions* c
     const int chr_container_height = FONT_TEX_CHR_MARGIN.y + arrangement_info->line_height + FONT_TEX_CHR_MARGIN.y;
 
     for (int i = 0; i < ASCII_PRINTABLE_RANGE_LEN; i++) {
-        const s_v2_int chr_size = arrangement_info->chr_sizes[i];
+        const s_v2_int chr_size = *FontChrSizes_GetConst(&arrangement_info->chr_sizes, i);
         const int chr_container_width = FONT_TEX_CHR_MARGIN.x + chr_size.x + FONT_TEX_CHR_MARGIN.x;
 
         if (chr_pos.x + chr_container_width > tex_width_limit) {
@@ -235,7 +240,7 @@ static void LoadFontTextureInfo(s_v2_int* const tex_size, t_tex_chr_positions* c
             chr_pos.y += chr_container_height;
         }
 
-        (*tex_chr_positions)[i] = (s_v2_int){
+        *FontTexChrPositions_Get(tex_chr_positions, i) = (s_v2_int){
             chr_pos.x + FONT_TEX_CHR_MARGIN.x,
             chr_pos.y + FONT_TEX_CHR_MARGIN.y
         };
@@ -247,30 +252,30 @@ static void LoadFontTextureInfo(s_v2_int* const tex_size, t_tex_chr_positions* c
     }
 }
 
-static t_gl_id GenFontTexture(const stbtt_fontinfo* const stb_font_info, const int font_height, const s_v2_int tex_size, const t_tex_chr_positions* const tex_chr_positions, const s_font_arrangement_info* const font_arrangement_info, s_mem_arena* const temp_mem_arena) {
+static t_gl_id GenFontTexture(const stbtt_fontinfo* const stb_font_info, const int font_height, const s_v2_int tex_size, const s_font_tex_chr_positions* const tex_chr_positions, const s_font_arrangement_info* const font_arrangement_info, s_mem_arena* const temp_mem_arena) {
     assert(stb_font_info);
     assert(font_height > 0);
     assert(tex_size.x > 0 && tex_size.y > 0);
     assert(tex_chr_positions);
-    AssertFontArrangementInfoValidity(font_arrangement_info);
+    FontArrangementInfo_AssertValidity(font_arrangement_info);
     assert(temp_mem_arena && IsMemArenaValid(temp_mem_arena));
 
     const float scale = stbtt_ScaleForPixelHeight(stb_font_info, font_height);
 
     const size_t font_tex_rgba_px_data_size = 4 * tex_size.x * tex_size.y;
-    t_byte* const font_tex_rgba_px_data = MEM_ARENA_PUSH_TYPE_CNT(temp_mem_arena, t_byte, font_tex_rgba_px_data_size);
+    const s_byte_array font_tex_rgba_px_data = PushBytes(temp_mem_arena, font_tex_rgba_px_data_size);
 
-    if (!font_tex_rgba_px_data) {
+    if (IS_ZERO(font_tex_rgba_px_data)) {
         LOG_ERROR("Failed to reserve memory for font texture RGBA pixel data!");
         return 0;
     }
 
     // Clear the pixel data to transparent white.
     for (int i = 0; i < font_tex_rgba_px_data_size; i += 4) {
-        font_tex_rgba_px_data[i + 0] = 255;
-        font_tex_rgba_px_data[i + 1] = 255;
-        font_tex_rgba_px_data[i + 2] = 255;
-        font_tex_rgba_px_data[i + 3] = 0;
+        font_tex_rgba_px_data.buf_raw[i + 0] = 255;
+        font_tex_rgba_px_data.buf_raw[i + 1] = 255;
+        font_tex_rgba_px_data.buf_raw[i + 2] = 255;
+        font_tex_rgba_px_data.buf_raw[i + 3] = 0;
     }
 
     // Write the pixel data of each character.
@@ -289,11 +294,13 @@ static t_gl_id GenFontTexture(const stbtt_fontinfo* const stb_font_info, const i
             return 0;
         }
 
+        const s_v2_int chr_size = *FontChrSizes_GetConst(&font_arrangement_info->chr_sizes, i);
+
         const s_rect_int src_rect = {
-            (*tex_chr_positions)[i].x,
-            (*tex_chr_positions)[i].y,
-            font_arrangement_info->chr_sizes[i].x,
-            font_arrangement_info->chr_sizes[i].y
+            FontTexChrPositions_GetConst(tex_chr_positions, i)->x,
+            FontTexChrPositions_GetConst(tex_chr_positions, i)->y,
+            chr_size.x,
+            chr_size.y
         };
 
         for (int yo = 0; yo < src_rect.height; yo++) {
@@ -302,7 +309,7 @@ static t_gl_id GenFontTexture(const stbtt_fontinfo* const stb_font_info, const i
                 const int px_index = ((px_pos.y * tex_size.x) + px_pos.x) * 4;
 
                 const int bitmap_index = IndexFrom2D(xo, yo, src_rect.width);
-                font_tex_rgba_px_data[px_index + 3] = bitmap[bitmap_index];
+                *ByteArray_Get(font_tex_rgba_px_data, px_index + 3) = bitmap[bitmap_index];
             }
         }
 
@@ -315,36 +322,36 @@ static t_gl_id GenFontTexture(const stbtt_fontinfo* const stb_font_info, const i
 s_font_group GenFonts(const int font_cnt, const s_font_info* const font_infos, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const mem_arena, s_mem_arena* const temp_mem_arena) {
     assert(font_cnt > 0);
     assert(font_infos);
-    AssertGLResourceArenaValidity(gl_res_arena);
+    GLResourceArena_AssertValidity(gl_res_arena);
     assert(mem_arena && IsMemArenaValid(mem_arena));
     assert(temp_mem_arena && IsMemArenaValid(temp_mem_arena));
 
     // Reserve memory for font data.
-    s_font_arrangement_info* const arrangement_infos = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, s_font_arrangement_info, font_cnt);
+    s_font_arrangement_info_array arrangement_infos = PushFontArrangementInfos(mem_arena, font_cnt);
 
-    if (!arrangement_infos) {
+    if (IS_ZERO(arrangement_infos)) {
         LOG_ERROR("Failed to reserve memory for font arrangement information!");
         return (s_font_group){0};
     }
 
-    t_gl_id* const tex_gl_ids = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, t_gl_id, font_cnt);
+    const s_gl_id_array tex_gl_ids = ReserveGLIDs(gl_res_arena, font_cnt, ek_gl_resource_type_texture);
 
-    if (!tex_gl_ids) {
-        LOG_ERROR("Failed to reserve memory for font texture OpenGL IDs!");
+    if (IS_ZERO(tex_gl_ids)) {
+        LOG_ERROR("Failed to reserve font texture OpenGL IDs!");
         return (s_font_group){0};
     }
 
-    s_v2_int* const tex_sizes = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, s_v2_int, font_cnt);
+    s_v2_int_array tex_sizes = PushV2Ints(mem_arena, font_cnt);
 
-    if (!tex_sizes) {
+    if (IS_ZERO(tex_sizes)) {
         LOG_ERROR("Failed to reserve memory for font texture sizes!");
         return (s_font_group){0};
     }
 
-    t_tex_chr_positions* const tex_chr_positions = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, t_tex_chr_positions, font_cnt);
+    const s_font_tex_chr_positions_array tex_chr_positions_array = PushFontTexChrPositionss(mem_arena, font_cnt);
 
-    if (!tex_chr_positions) {
-        LOG_ERROR("Failed to reserve memory for font texture character positions!");
+    if (IS_ZERO(tex_chr_positions_array)) {
+        LOG_ERROR("Failed to reserve memory for font texture character positions array!");
         return (s_font_group){0};
     }
 
@@ -353,41 +360,47 @@ s_font_group GenFonts(const int font_cnt, const s_font_info* const font_infos, s
         const s_font_info* const info = &font_infos[i];
         AssertFontInfoValidity(info);
 
-        const t_byte* const font_file_data = PushEntireFileContents(info->file_path, temp_mem_arena, false);
+        const s_byte_array font_file_data = PushEntireFileContents(info->file_path, temp_mem_arena);
 
-        if (!font_file_data) {
+        if (IS_ZERO(font_file_data)) {
             LOG_ERROR("Failed to reserve memory for font file contents!");
             goto error;
         }
 
         stbtt_fontinfo stb_font_info;
 
-        const int offs = stbtt_GetFontOffsetForIndex(font_file_data, 0);
+        const int offs = stbtt_GetFontOffsetForIndex(font_file_data.buf_raw, 0);
 
         if (offs == -1) {
             LOG_ERROR("Failed to get font offset!");
             goto error;
         }
 
-        if (!stbtt_InitFont(&stb_font_info, font_file_data, offs)) {
+        if (!stbtt_InitFont(&stb_font_info, font_file_data.buf_raw, offs)) {
             LOG_ERROR("Failed to initialise font through STB!");
             goto error;
         }
 
-        LoadFontArrangementInfo(&arrangement_infos[i], &stb_font_info, info->height);
+        s_font_arrangement_info* const arrangement_info = FontArrangementInfoArray_Get(arrangement_infos, i);
+        LoadFontArrangementInfo(arrangement_info, &stb_font_info, info->height);
+
+        s_font_tex_chr_positions* const chr_positions = FontTexChrPositionsArray_Get(tex_chr_positions_array, i);
 
         const s_v2_int font_tex_size_limit = GLTextureSizeLimit();
 
-        LoadFontTextureInfo(&tex_sizes[i], &tex_chr_positions[i], &arrangement_infos[i], font_tex_size_limit.x);
+        LoadFontTextureInfo(V2IntArray_Get(tex_sizes, i), chr_positions, arrangement_info, font_tex_size_limit.x);
 
-        if (tex_sizes[i].y > font_tex_size_limit.y) {
+        const s_v2_int tex_size = *V2IntArray_Get(tex_sizes, i);
+
+        if (tex_size.y > font_tex_size_limit.y) {
             LOG_ERROR("Prospective font texture size is too large!");
             goto error;
         }
 
-        tex_gl_ids[i] = GenFontTexture(&stb_font_info, info->height, tex_sizes[i], &tex_chr_positions[i], &arrangement_infos[i], temp_mem_arena);
+        t_gl_id* const tex_gl_id = GLIDArray_Get(tex_gl_ids, i);
+        *tex_gl_id = GenFontTexture(&stb_font_info, info->height, tex_size, chr_positions, arrangement_info, temp_mem_arena);
 
-        if (!tex_gl_ids[i]) {
+        if (!(*tex_gl_id)) {
             LOG_ERROR("Failed to generate font texture!");
             goto error;
         }
@@ -397,8 +410,6 @@ s_font_group GenFonts(const int font_cnt, const s_font_info* const font_infos, s
 error:
         LOG_ERROR("Failed to load font \"%s\" with height %d!", info->file_path, info->height);
 
-        glDeleteTextures(font_cnt, tex_gl_ids);
-
         return (s_font_group){0};
     }
 
@@ -406,7 +417,7 @@ error:
         .arrangement_infos = arrangement_infos,
         .tex_gl_ids = tex_gl_ids,
         .tex_sizes = tex_sizes,
-        .tex_chr_positions = tex_chr_positions,
+        .tex_chr_positions = tex_chr_positions_array,
         .cnt = font_cnt
     };
 }
@@ -436,14 +447,14 @@ static s_str_len_and_line_cnt StrLenAndLineCnt(const char* const str) {
     };
 }
 
-s_v2* PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const str, const s_font_group* const fonts, const int font_index, const s_v2 pos, const s_v2 alignment) {
+s_v2_array PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const str, const s_font_group* const fonts, const int font_index, const s_v2 pos, const s_v2 alignment) {
     assert(mem_arena && IsMemArenaValid(mem_arena));
     assert(str && str[0]);
-    AssertFontGroupValidity(fonts);
+    FontGroup_AssertValidity(fonts);
     assert(font_index >= 0 && font_index < fonts->cnt);
     assert(IsStrAlignmentValid(alignment));
 
-    const s_font_arrangement_info* const arrangement_info = &fonts->arrangement_infos[font_index];
+    const s_font_arrangement_info* const arrangement_info = FontArrangementInfoArray_Get(fonts->arrangement_infos, font_index);
 
     const s_str_len_and_line_cnt str_len_and_line_cnt = StrLenAndLineCnt(str);
 
@@ -451,11 +462,11 @@ s_v2* PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const 
     const float alignment_offs_y = -(str_len_and_line_cnt.line_cnt * arrangement_info->line_height) * alignment.y;
 
     // Reserve memory for the character render positions.
-    s_v2* const chr_render_positions = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, s_v2, str_len_and_line_cnt.len);
+    const s_v2_array chr_render_positions = PushV2s(mem_arena, str_len_and_line_cnt.len);
 
-    if (!chr_render_positions) {
+    if (IS_ZERO(chr_render_positions)) {
         LOG_ERROR("Failed to reserve memory for character render positions!");
-        return NULL;
+        return (s_v2_array){0};
     }
 
     // Calculate the render position for each character.
@@ -473,7 +484,7 @@ s_v2* PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const 
                 const float line_width = chr_pos_pen.x;
 
                 for (int j = line_starting_chr_index; j < i; j++) {
-                    chr_render_positions[j].x -= line_width * alignment.x;
+                    V2Array_Get(chr_render_positions, j)->x -= line_width * alignment.x;
                 }
             }
 
@@ -492,12 +503,15 @@ s_v2* PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const 
 
         const int chr_ascii_printable_index = chr - ASCII_PRINTABLE_MIN;
 
-        chr_render_positions[i] = (s_v2){
-            pos.x + chr_pos_pen.x + arrangement_info->chr_offsets[chr_ascii_printable_index].x,
-            pos.y + chr_pos_pen.y + arrangement_info->chr_offsets[chr_ascii_printable_index].y + alignment_offs_y
+        const s_v2_int chr_offs = *FontChrOffsets_GetConst(&arrangement_info->chr_offsets, chr_ascii_printable_index);
+
+        *V2Array_Get(chr_render_positions, i) = (s_v2){
+            pos.x + chr_pos_pen.x + chr_offs.x,
+            pos.y + chr_pos_pen.y + chr_offs.y + alignment_offs_y
         };
 
-        chr_pos_pen.x += arrangement_info->chr_advances[chr_ascii_printable_index];
+        const int chr_advance = *FontChrAdvances_GetConst(&arrangement_info->chr_advances, chr_ascii_printable_index);
+        chr_pos_pen.x += chr_advance;
     }
 
     return chr_render_positions;
@@ -506,14 +520,16 @@ s_v2* PushStrChrRenderPositions(s_mem_arena* const mem_arena, const char* const 
 bool LoadStrCollider(s_rect* const rect, const char* const str, const s_font_group* const fonts, const int font_index, const s_v2 pos, const s_v2 alignment, s_mem_arena* const temp_mem_arena) {
     assert(rect && IS_ZERO(*rect));
     assert(str && str[0]);
-    AssertFontGroupValidity(fonts);
+    FontGroup_AssertValidity(fonts);
     assert(font_index >= 0 && font_index < fonts->cnt);
     assert(IsStrAlignmentValid(alignment));
     assert(temp_mem_arena && IsMemArenaValid(temp_mem_arena));
 
-    const s_v2* const chr_render_positions = PushStrChrRenderPositions(temp_mem_arena, str, fonts, font_index, pos, alignment);
+    s_font_arrangement_info* const arrangement_info = FontArrangementInfoArray_Get(fonts->arrangement_infos, font_index);
 
-    if (!chr_render_positions) {
+    const s_v2_array chr_render_positions = PushStrChrRenderPositions(temp_mem_arena, str, fonts, font_index, pos, alignment);
+
+    if (IS_ZERO(chr_render_positions)) {
         LOG_ERROR("Failed to reserve memory for character render positions!");
         return false;
     }
@@ -532,13 +548,15 @@ bool LoadStrCollider(s_rect* const rect, const char* const str, const s_font_gro
 
         const int chr_ascii_printable_index = chr - ASCII_PRINTABLE_MIN;
 
-        const s_v2_int chr_size = fonts->arrangement_infos[font_index].chr_sizes[chr_ascii_printable_index];
+        const s_v2_int chr_size = *FontChrSizes_GetConst(&arrangement_info->chr_sizes, chr_ascii_printable_index);
+
+        const s_v2 chr_render_pos = *V2Array_Get(chr_render_positions, i);
 
         const s_rect_edges chr_rect_edges = {
-            .left = chr_render_positions[i].x,
-            .top = chr_render_positions[i].y,
-            .right = chr_render_positions[i].x + chr_size.x,
-            .bottom = chr_render_positions[i].y + chr_size.y
+            .left = chr_render_pos.x,
+            .top = chr_render_pos.y,
+            .right = chr_render_pos.x + chr_size.x,
+            .bottom = chr_render_pos.y + chr_size.y
         };
 
         if (!initted) {
@@ -582,11 +600,11 @@ static t_gl_id GenShaderFromSrc(const char* const src, const bool frag, s_mem_ar
         glGetShaderiv(shader_gl_id, GL_INFO_LOG_LENGTH, &log_len);
 
         if (log_len > 0) {
-            char* const log = MEM_ARENA_PUSH_TYPE_CNT(temp_mem_arena, char, log_len);
+            const s_char_array log = PushChars(temp_mem_arena, log_len);
 
-            if (log) {
-                glGetShaderInfoLog(shader_gl_id, log_len, NULL, log);
-                LOG_ERROR_SPECIAL("OpenGL Shader Compilation", "%s", log);
+            if (!IS_ZERO(log)) {
+                glGetShaderInfoLog(shader_gl_id, log_len, NULL, log.buf_raw);
+                LOG_ERROR_SPECIAL("OpenGL Shader Compilation", "%s", log.buf_raw);
             }
         }
 
@@ -609,14 +627,14 @@ static t_gl_id GenShaderProg(const s_shader_prog_gen_info* const gen_info, s_mem
         vs_src = gen_info->vs_src;
         fs_src = gen_info->fs_src;
     } else {
-        vs_src = (const char*)PushEntireFileContents(gen_info->vs_file_path, temp_mem_arena, true);
+        vs_src = PushEntireFileContentsAsStr(gen_info->vs_file_path, temp_mem_arena);
 
         if (!vs_src) {
             LOG_ERROR("Failed to get contents of vertex shader source file \"%s\"!", gen_info->vs_file_path);
             return 0;
         }
 
-        fs_src = (const char*)PushEntireFileContents(gen_info->fs_file_path, temp_mem_arena, true);
+        fs_src = PushEntireFileContentsAsStr(gen_info->fs_file_path, temp_mem_arena);
 
         if (!fs_src) {
             LOG_ERROR("Failed to get contents of fragment shader source file \"%s\"!", gen_info->fs_file_path);
@@ -667,7 +685,7 @@ static t_gl_id GenShaderProg(const s_shader_prog_gen_info* const gen_info, s_mem
 s_shader_prog_group GenShaderProgs(const int prog_cnt, const s_shader_prog_gen_info* const prog_gen_infos, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const temp_mem_arena) {
     assert(prog_cnt > 0);
     assert(prog_gen_infos);
-    AssertGLResourceArenaValidity(gl_res_arena);
+    GLResourceArena_AssertValidity(gl_res_arena);
     assert(temp_mem_arena && IsMemArenaValid(temp_mem_arena));
 
     const s_gl_id_array gl_ids = ReserveGLIDs(gl_res_arena, prog_cnt, ek_gl_resource_type_shader_prog);
@@ -681,7 +699,7 @@ s_shader_prog_group GenShaderProgs(const int prog_cnt, const s_shader_prog_gen_i
         const s_shader_prog_gen_info* const gen_info = &prog_gen_infos[i];
         AssertShaderProgGenInfoValidity(gen_info);
 
-        t_gl_id* const gl_id = GLIDArray_Get(&gl_ids, i);
+        t_gl_id* const gl_id = GLIDArray_Get(gl_ids, i);
         *gl_id = GenShaderProg(gen_info, temp_mem_arena);
 
         if (!(*gl_id)) {
@@ -764,10 +782,11 @@ static bool AttachFramebufferTexture(const t_gl_id fb_gl_id, const t_gl_id tex_g
     return success;
 }
 
-s_surface_group GenSurfaces(const int surf_cnt, const s_v2_int* const surf_sizes, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const mem_arena) {
+s_surface_group GenSurfaces(const int surf_cnt, const s_v2_int_array surf_sizes, s_gl_resource_arena* const gl_res_arena, s_mem_arena* const mem_arena) {
     assert(surf_cnt > 0);
-    assert(surf_sizes);
-    AssertGLResourceArenaValidity(gl_res_arena);
+    V2IntArray_AssertValidity(surf_sizes);
+    assert(surf_sizes.len == surf_cnt);
+    GLResourceArena_AssertValidity(gl_res_arena);
     assert(mem_arena && IsMemArenaValid(mem_arena));
 
     const s_gl_id_array fb_gl_ids = ReserveGLIDs(gl_res_arena, surf_cnt, ek_gl_resource_type_framebuffer);
@@ -784,26 +803,24 @@ s_surface_group GenSurfaces(const int surf_cnt, const s_v2_int* const surf_sizes
         return (s_surface_group){0};
     }
 
-    s_v2_int* const surf_sizes_pers = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, s_v2_int, surf_cnt);
+    const s_v2_int_array surf_sizes_pers = PushV2Ints(mem_arena, surf_cnt);
 
-    if (!surf_sizes_pers) {
+    if (IS_ZERO(surf_sizes_pers)) {
         LOG_ERROR("Failed to reserve memory for surface sizes!");
         return (s_surface_group){0};
     }
 
-    glGenFramebuffers(surf_cnt, fb_gl_ids.buf);
-    glGenTextures(surf_cnt, fb_tex_gl_ids.buf);
+    glGenFramebuffers(surf_cnt, fb_gl_ids.buf_raw);
+    glGenTextures(surf_cnt, fb_tex_gl_ids.buf_raw);
 
     for (int i = 0; i < surf_cnt; i++) {
-        assert(surf_sizes[i].x > 0 && surf_sizes[i].y > 0);
-
-        if (!AttachFramebufferTexture(*GLIDArray_Get(&fb_gl_ids, i), *GLIDArray_Get(&fb_tex_gl_ids, i), surf_sizes[i])) {
+        if (!AttachFramebufferTexture(*GLIDArray_Get(fb_gl_ids, i), *GLIDArray_Get(fb_tex_gl_ids, i), *V2IntArray_Get(surf_sizes, i))) {
             LOG_ERROR("Failed to attach framebuffer texture for surface %d!", i);
             return (s_surface_group){0};
         }
-    }
 
-    memcpy(surf_sizes_pers, surf_sizes, sizeof(*surf_sizes) * surf_cnt);
+        *V2IntArray_Get(surf_sizes_pers, i) = *V2IntArray_Get(surf_sizes, i);
+    }
 
     return (s_surface_group){
         .fb_gl_ids = fb_gl_ids,
@@ -817,10 +834,12 @@ bool ResizeSurface(s_surface_group* const surfs, const int surf_index, const s_v
     AssertSurfaceGroupValidity(surfs);
     assert(surf_index >= 0 && surf_index < surfs->cnt);
     assert(size.x > 0 && size.y > 0);
-    assert(size.x != surfs->sizes[surf_index].x || size.y != surfs->sizes[surf_index].y);
 
-    const t_gl_id fb_gl_id = *GLIDArray_Get(&surfs->fb_gl_ids, surf_index);
-    t_gl_id* const fb_tex_gl_id = GLIDArray_Get(&surfs->fb_tex_gl_ids, surf_index);
+    const s_v2_int size_old = *V2IntArray_Get(surfs->sizes, surf_index);
+    assert(size.x != size_old.x || size.y != size_old.y);
+
+    const t_gl_id fb_gl_id = *GLIDArray_Get(surfs->fb_gl_ids, surf_index);
+    t_gl_id* const fb_tex_gl_id = GLIDArray_Get(surfs->fb_tex_gl_ids, surf_index);
 
     // Delete old texture.
     glDeleteTextures(1, fb_tex_gl_id);

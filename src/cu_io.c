@@ -19,7 +19,36 @@ bool DoesFilenameHaveExt(const char* const filename, const char* const ext) {
     return strcmp(ext_actual, ext) == 0;
 }
 
-t_byte* PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena, const bool incl_terminating_byte) {
+s_byte_array PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena) {
+    assert(file_path);
+    assert(mem_arena && IsMemArenaValid(mem_arena));
+
+    FILE* const fs = fopen(file_path, "rb");
+
+    if (!fs) {
+        LOG_ERROR("Failed to open \"%s\"!", file_path);
+        return (s_byte_array){0};
+    }
+
+    fseek(fs, 0, SEEK_END);
+    const size_t file_size = ftell(fs);
+    fseek(fs, 0, SEEK_SET);
+
+    const s_byte_array contents = PushBytes(mem_arena, file_size);
+
+    if (!IS_ZERO(contents)) {
+        const size_t read_cnt = fread(contents.buf_raw, 1, file_size, fs);
+
+        if (read_cnt != file_size) {
+            LOG_ERROR("Failed to read the contents of \"%s\"!", file_path);
+            return (s_byte_array){0};
+        }
+    }
+
+    return contents;
+}
+
+const char* PushEntireFileContentsAsStr(const char* const file_path, s_mem_arena* const mem_arena) {
     assert(file_path);
     assert(mem_arena && IsMemArenaValid(mem_arena));
 
@@ -34,20 +63,18 @@ t_byte* PushEntireFileContents(const char* const file_path, s_mem_arena* const m
     const size_t file_size = ftell(fs);
     fseek(fs, 0, SEEK_SET);
 
-    t_byte* const contents = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, t_byte, incl_terminating_byte ? (file_size + 1) : file_size);
+    const s_char_array contents = PushChars(mem_arena, file_size + 1);
 
-    if (!contents) {
-        return NULL;
+    if (!IS_ZERO(contents)) {
+        const size_t read_cnt = fread(contents.buf_raw, 1, file_size, fs);
+
+        if (read_cnt != file_size) {
+            LOG_ERROR("Failed to read the contents of \"%s\"!", file_path);
+            return NULL;
+        }
     }
 
-    const size_t read_cnt = fread(contents, 1, file_size, fs);
-    
-    if (read_cnt != file_size) {
-        LOG_ERROR("Failed to read the contents of \"%s\"!", file_path);
-        return NULL;
-    }
-
-    return contents;
+    return contents.buf_raw;
 }
 
 bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem_arena, const char* const dir_param) {

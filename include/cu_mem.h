@@ -91,47 +91,57 @@ static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t wi
 }
 
 #define DECLARE_STATIC_ARRAY_TYPE(type, len, name_snake, name_pascal) \
-    typedef type t_##name_snake[len]; \
+    typedef struct { \
+        type buf_raw[len]; \
+    } s_##name_snake; \
     \
-    static inline int* name_pascal##_Get(t_##name_snake* const array, const int index) { \
-        assert(index >= 0 && index < len); \
-        return &(*array)[index]; \
+    static inline type* name_pascal##_Get(s_##name_snake* const array, const int index) { \
+        assert(index >= 0 && index < (len)); \
+        return &array->buf_raw[index]; \
+    } \
+    \
+    static inline const type* name_pascal##_GetConst(const s_##name_snake* const array, const int index) { \
+        assert(index >= 0 && index < (len)); \
+        return &array->buf_raw[index]; \
     }
 
 #define DECLARE_ARRAY_TYPE(type, name_snake, name_pascal) \
     typedef struct { \
-        type* buf; \
+        type* buf_raw; \
         int len; \
     } s_##name_snake##_array; \
     \
-    static inline void name_pascal##Array_AssertValidity(const s_##name_snake##_array* const array) { \
-        assert(array); \
-        assert(array->buf); \
-        assert(array->len >= 0); \
+    static inline void name_pascal##Array_AssertValidity(const s_##name_snake##_array array) { \
+        assert(array.buf_raw); \
+        assert(array.len >= 0); \
     } \
     \
-    static inline type* name_pascal##Array_Get(const s_##name_snake##_array* const array, const int index) { \
+    static inline type* name_pascal##Array_Get(const s_##name_snake##_array array, const int index) { \
         name_pascal##Array_AssertValidity(array); \
-        assert(index >= 0 && index < array->len); \
+        assert(index >= 0 && index < array.len); \
         \
-        return &array->buf[index]; \
+        return &array.buf_raw[index]; \
     } \
     \
     static inline s_##name_snake##_array Push##name_pascal##s(s_mem_arena* const mem_arena, const int cnt) { \
-        type* const buf = MEM_ARENA_PUSH_TYPE_CNT(mem_arena, type, cnt); \
+        type* const buf = PushToMemArena(mem_arena, sizeof(type) * (cnt), ALIGN_OF(type)); \
         \
         if (!buf) { \
             return (s_##name_snake##_array){0}; \
         } \
         \
         return (s_##name_snake##_array){ \
-            .buf = buf, \
+            .buf_raw = buf, \
             .len = cnt \
         }; \
     }
 
 DECLARE_ARRAY_TYPE(t_byte, byte, Byte);
+DECLARE_ARRAY_TYPE(char, char, Char);
+DECLARE_ARRAY_TYPE(short, short, Short);
+DECLARE_ARRAY_TYPE(unsigned short, ushort, UShort);
 DECLARE_ARRAY_TYPE(int, int, Int);
+DECLARE_ARRAY_TYPE(unsigned int, uint, UInt);
 DECLARE_ARRAY_TYPE(float, float, Float);
 DECLARE_ARRAY_TYPE(double, double, Double);
 
