@@ -38,8 +38,6 @@ static inline bool IsMemArenaValid(const s_mem_arena* const arena) {
     return arena->buf && arena->size > 0 && arena->offs <= arena->size;
 }
 
-int FirstInactiveBitIndex(const t_byte* const bytes, const size_t bit_cnt); // Returns -1 if an inactive bit is not found.
-
 bool InitMemArena(s_mem_arena* const arena, const size_t size);
 void CleanMemArena(s_mem_arena* const arena);
 void* PushToMemArena(s_mem_arena* const arena, const size_t size, const size_t alignment);
@@ -132,33 +130,58 @@ static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t wi
         }; \
     }
 
+DECLARE_ARRAY_TYPE(t_byte, byte, Byte);
 DECLARE_ARRAY_TYPE(int, int, Int);
 DECLARE_ARRAY_TYPE(float, float, Float);
 DECLARE_ARRAY_TYPE(double, double, Double);
 
-static inline void ActivateBit(t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
-    assert(bytes);
-    assert(bit_index < bit_cnt);
-    assert(bit_cnt > 0);
+typedef struct {
+    t_byte* bytes;
+    size_t bit_cnt;
+} s_bitset;
 
-    bytes[bit_index / 8] |= 1 << (bit_index % 8);
+int Bitset_IndexOfFirstUnsetBit(const s_bitset bitset); // Returns -1 is there is no unset bit.
+
+static inline void Bitset_AssertValidity(const s_bitset bitset) {
+    assert(bitset.bytes);
+    assert(bitset.bit_cnt > 0);
 }
 
-static inline void DeactivateBit(t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
-    assert(bytes);
-    assert(bit_index < bit_cnt);
-    assert(bit_cnt > 0);
+static inline void Bitset_SetBit(const s_bitset bitset, const size_t bit_index) {
+    Bitset_AssertValidity(bitset);
+    assert(bit_index < bitset.bit_cnt);
 
-    bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
+    bitset.bytes[bit_index / 8] |= 1 << (bit_index % 8);
 }
 
-static inline bool IsBitActive(const t_byte* const bytes, const size_t bit_index, const size_t bit_cnt) {
-    assert(bytes);
-    assert(bit_index < bit_cnt);
-    assert(bit_cnt > 0);
+static inline void Bitset_UnsetBit(const s_bitset bitset, const size_t bit_index) {
+    Bitset_AssertValidity(bitset);
+    assert(bit_index < bitset.bit_cnt);
 
-    return bytes[bit_index / 8] & (1 << (bit_index % 8));
+    bitset.bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
 }
+
+static inline bool Bitset_IsBitActive(const s_bitset bitset, const size_t bit_index) {
+    Bitset_AssertValidity(bitset);
+    assert(bit_index < bitset.bit_cnt);
+
+    return bitset.bytes[bit_index / 8] & (1 << (bit_index % 8));
+}
+
+#define DECLARE_STATIC_BITSET_TYPE(bit_cnt, name_snake, name_pascal) \
+    typedef t_byte t_##name_snake[BITS_TO_BYTES(bit_cnt)]; \
+    \
+    static inline void name_pascal##SetBit(t_##name_snake* const bitset, const size_t bit_index) { \
+        return Bitset_SetBit((s_bitset){.bytes = *bitset, .bit_cnt = bit_cnt}, bit_index); \
+    } \
+    \
+    static inline void name_pascal##UnsetBit(t_##name_snake* const bitset, const size_t bit_index) { \
+        return Bitset_UnsetBit((s_bitset){.bytes = *bitset, .bit_cnt = bit_cnt}, bit_index); \
+    } \
+    \
+    static inline bool name_pascal##IsBitActive(const t_##name_snake* const bitset, const size_t bit_index) { \
+        return Bitset_IsBitActive((s_bitset){.bytes = *bitset, .bit_cnt = bit_cnt}, bit_index); \
+    }
 
 static inline t_byte KeepFirstNBitsOfByte(const t_byte byte, const size_t n) {
     assert(n <= 8);

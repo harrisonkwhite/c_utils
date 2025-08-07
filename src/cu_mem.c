@@ -3,32 +3,31 @@
 #include <stdlib.h>
 #include "cu_io.h"
 
-int FirstInactiveBitIndex(const t_byte* const bytes, const size_t bit_cnt) {
-    assert(bytes);
-    assert(bit_cnt > 0);
+int Bitset_IndexOfFirstUnsetBit(const s_bitset bitset) {
+    Bitset_AssertValidity(bitset);
 
-    for (int i = 0; i < (bit_cnt / 8); i++) {
-        if (bytes[i] == 0xFF) {
+    for (int i = 0; i < (bitset.bit_cnt / 8); i++) {
+        if (bitset.bytes[i] == 0xFF) {
             continue;
         }
 
         for (int j = 0; j < 8; j++) {
-            if (!(bytes[i] & (1 << j))) {
+            if (!(bitset.bytes[i] & (1 << j))) {
                 return (i * 8) + j;
             }
         }
     }
 
-    const int excess_bits = bit_cnt % 8;
+    const int excess_bits = bitset.bit_cnt % 8;
 
     if (excess_bits > 0) {
         // Get the last byte, masking out any bits we don't care about.
-        const t_byte last_byte = KeepFirstNBitsOfByte(bytes[bit_cnt / 8], excess_bits);
+        const t_byte last_byte = KeepFirstNBitsOfByte(bitset.bytes[bitset.bit_cnt / 8], excess_bits);
 
         if (last_byte != 0xFF) {
             for (int i = 0; i < 8; i++) {
                 if (!(last_byte & (1 << i))) {
-                    return bit_cnt - excess_bits + i;
+                    return bitset.bit_cnt - excess_bits + i;
                 }
             }
         }
