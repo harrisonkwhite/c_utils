@@ -4,5 +4,6 @@
 #include "cu_mem.h"
 #include "cu_math.h"
 #include "cu_io.h"
+#include "cu_graphics.h"
 
 #endif

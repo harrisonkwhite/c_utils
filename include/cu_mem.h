@@ -171,16 +171,20 @@ static inline bool Bitset_IsBitActive(const s_bitset bitset, const size_t bit_in
 #define DECLARE_STATIC_BITSET_TYPE(bit_cnt, name_snake, name_pascal) \
     typedef t_byte t_##name_snake[BITS_TO_BYTES(bit_cnt)]; \
     \
-    static inline void name_pascal##SetBit(t_##name_snake* const bitset, const size_t bit_index) { \
-        return Bitset_SetBit((s_bitset){.bytes = *bitset, .bit_cnt = bit_cnt}, bit_index); \
+    static inline void name_pascal##_SetBit(t_##name_snake* const bitset, const size_t bit_index) { \
+        Bitset_SetBit((s_bitset){*bitset, bit_cnt}, bit_index); \
     } \
     \
-    static inline void name_pascal##UnsetBit(t_##name_snake* const bitset, const size_t bit_index) { \
-        return Bitset_UnsetBit((s_bitset){.bytes = *bitset, .bit_cnt = bit_cnt}, bit_index); \
+    static inline void name_pascal##_UnsetBit(t_##name_snake* const bitset, const size_t bit_index) { \
+        Bitset_UnsetBit((s_bitset){*bitset, bit_cnt}, bit_index); \
     } \
     \
-    static inline bool name_pascal##IsBitActive(const t_##name_snake* const bitset, const size_t bit_index) { \
-        return Bitset_IsBitActive((s_bitset){.bytes = *bitset, .bit_cnt = bit_cnt}, bit_index); \
+    static inline bool name_pascal##_IsBitActive(const t_##name_snake* const bitset, const size_t bit_index) { \
+        return Bitset_IsBitActive((s_bitset){*bitset, bit_cnt}, bit_index); \
+    } \
+    \
+    static inline int name_pascal##_IndexOfFirstUnsetBit(const t_##name_snake* const bitset) { \
+        return Bitset_IndexOfFirstUnsetBit((s_bitset){*bitset, bit_cnt}); \
     }
 
 static inline t_byte KeepFirstNBitsOfByte(const t_byte byte, const size_t n) {
