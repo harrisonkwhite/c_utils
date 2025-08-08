@@ -6,10 +6,8 @@
 #include <dirent.h>
 #endif
 
+#if 0
 bool DoesFilenameHaveExt(const char* const filename, const char* const ext) {
-    assert(filename);
-    assert(ext);
-
     const char* const ext_actual = strrchr(filename, '.');
 
     if (!ext_actual) {
@@ -18,68 +16,39 @@ bool DoesFilenameHaveExt(const char* const filename, const char* const ext) {
 
     return strcmp(ext_actual, ext) == 0;
 }
+#endif
 
-s_byte_array PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena) {
-    assert(file_path);
-    assert(mem_arena && IsMemArenaValid(mem_arena));
-
-    FILE* const fs = fopen(file_path, "rb");
+s_u8_array LoadFileContents(const s_str_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte) {
+    FILE* const fs = fopen(file_path.buf_raw, "rb");
 
     if (!fs) {
-        LOG_ERROR("Failed to open \"%s\"!", file_path);
-        return (s_byte_array){0};
+        LOG_ERROR("Failed to open \"%s\"!", file_path.buf_raw);
+        return (s_u8_array){0};
     }
 
     fseek(fs, 0, SEEK_END);
     const size_t file_size = ftell(fs);
     fseek(fs, 0, SEEK_SET);
 
-    const s_byte_array contents = PushBytes(mem_arena, file_size);
+    const s_u8_array contents = PushU8Array(mem_arena, include_terminating_byte ? file_size + 1 : file_size);
 
-    if (!IS_ZERO(contents)) {
-        const size_t read_cnt = fread(contents.buf_raw, 1, file_size, fs);
+    if (IS_ZERO(contents)) {
+        LOG_ERROR("Failed to reserve memory for the contents of file \"%s\"!", file_path.buf_raw);
+        return (s_u8_array){0};
+    }
 
-        if (read_cnt != file_size) {
-            LOG_ERROR("Failed to read the contents of \"%s\"!", file_path);
-            return (s_byte_array){0};
-        }
+    if (fread(contents.buf_raw, 1, file_size, fs) < file_size) {
+        LOG_ERROR("Failed to read the contents of \"%s\"!", file_path.buf_raw);
+        return (s_u8_array){0};
     }
 
     return contents;
 }
 
-const char* PushEntireFileContentsAsStr(const char* const file_path, s_mem_arena* const mem_arena) {
-    assert(file_path);
-    assert(mem_arena && IsMemArenaValid(mem_arena));
-
-    FILE* const fs = fopen(file_path, "rb");
-
-    if (!fs) {
-        LOG_ERROR("Failed to open \"%s\"!", file_path);
-        return NULL;
-    }
-
-    fseek(fs, 0, SEEK_END);
-    const size_t file_size = ftell(fs);
-    fseek(fs, 0, SEEK_SET);
-
-    const s_char_array contents = PushChars(mem_arena, file_size + 1);
-
-    if (!IS_ZERO(contents)) {
-        const size_t read_cnt = fread(contents.buf_raw, 1, file_size, fs);
-
-        if (read_cnt != file_size) {
-            LOG_ERROR("Failed to read the contents of \"%s\"!", file_path);
-            return NULL;
-        }
-    }
-
-    return contents.buf_raw;
-}
-
+#if 0
 bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem_arena, const char* const dir_param) {
     assert(filenames && IS_ZERO(*filenames));
-    assert(mem_arena && IsMemArenaValid(mem_arena));
+    MemArena_AssertValidity(mem_arena);
     assert(dir_param);
 
     const size_t mem_arena_init_offs = mem_arena->offs;
@@ -130,7 +99,7 @@ bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem
         if (!buf) {
             closedir(dir);
             ZERO_OUT(*filenames);
-            RewindMemArena(mem_arena, mem_arena_init_offs);
+            MemArena_Rewind(mem_arena, mem_arena_init_offs);
             return false;
         }
 
@@ -147,3 +116,4 @@ bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem
 
     return true;
 }
+#endif

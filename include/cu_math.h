@@ -21,14 +21,14 @@ typedef struct {
     float y;
 } s_v2;
 
-DECLARE_ARRAY_TYPE(s_v2, v2, V2);
+DECLARE_ARRAY_TYPE(s_v2, v2_array, V2Array);
 
 typedef struct {
     int x;
     int y;
 } s_v2_int;
 
-DECLARE_ARRAY_TYPE(s_v2_int, v2_int, V2Int);
+DECLARE_ARRAY_TYPE(s_v2_int, v2_int_array, V2IntArray);
 
 typedef union {
     struct {
@@ -44,7 +44,7 @@ typedef union {
     };
 } u_v3;
 
-DECLARE_ARRAY_TYPE(u_v3, v3, V3);
+DECLARE_ARRAY_TYPE(u_v3, v3_array, V3Array);
 
 typedef union {
     struct {
@@ -62,7 +62,7 @@ typedef union {
     };
 } u_v4;
 
-DECLARE_ARRAY_TYPE(u_v4, v4, V4);
+DECLARE_ARRAY_TYPE(u_v4, v4_array, V4Array);
 
 static inline float Lerp(const float a, const float b, const float t) {
     assert(t >= 0.0f && t <= 1.0f);

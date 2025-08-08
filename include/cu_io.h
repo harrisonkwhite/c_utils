@@ -62,9 +62,13 @@ typedef struct {
     int cnt;
 } s_filenames;
 
-bool DoesFilenameHaveExt(const char* const filename, const char* const ext);
-s_byte_array PushEntireFileContents(const char* const file_path, s_mem_arena* const mem_arena);
-const char* PushEntireFileContentsAsStr(const char* const file_path, s_mem_arena* const mem_arena);
-bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem_arena, const char* const dir_param);
+//bool DoesFilenameHaveExt(const char* const filename, const char* const ext);
+s_u8_array LoadFileContents(const s_str_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte);
+//bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem_arena, const char* const dir_param);
+
+static inline s_str LoadFileContentsAsStr(const s_str_view file_path, s_mem_arena* const mem_arena) {
+    const s_u8_array contents = LoadFileContents(file_path, mem_arena, true);
+    return (s_str){.buf_raw = (char*)contents.buf_raw, .len = contents.len};
+}
 
 #endif
