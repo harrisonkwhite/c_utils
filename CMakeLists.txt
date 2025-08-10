@@ -11,9 +11,8 @@ add_library(c_utils STATIC
 
 target_include_directories(c_utils PUBLIC
     include
-    external/c_utils/include
 )
 
-target_compile_definitions(c_utils PRIVATE
-    _CRT_SECURE_NO_WARNINGS
+target_link_libraries(c_utils PUBLIC
+    m
 )

@@ -1,35 +1,37 @@
 #include <cu_math.h>
 
-s_rect GenSpanningRect(const s_rect* const rects, const int cnt) {
-    assert(rects);
-    assert(cnt > 0);
-
+s_rect GenSpanningRect(const s_rect_array_view rects) {
     s_rect_edges span = {
-        rects[0].x,
-        rects[0].y,
-        rects[0].x + rects[0].width,
-        rects[0].y + rects[0].height
+        RectElemView(rects, 0)->x,
+        RectElemView(rects, 0)->y,
+        RectElemView(rects, 0)->x + RectElemView(rects, 0)->width,
+        RectElemView(rects, 0)->y + RectElemView(rects, 0)->height
     };
 
-    for (int i = 1; i < cnt; ++i) {
-        const s_rect* const r = &rects[i];
+    for (t_s32 i = 1; i < rects.len; ++i) {
+        const s_rect* const rect = RectElemView(rects, i);
 
-        if (r->x < span.left) {
-            span.left = r->x;
+        if (rect->x < span.left) {
+            span.left = rect->x;
         }
         
-        if (r->y < span.top) {
-            span.top = r->y;
+        if (rect->y < span.top) {
+            span.top = rect->y;
         }
         
-        if (r->x + r->width > span.right) {
-            span.right = r->x + r->width;
+        if (rect->x + rect->width > span.right) {
+            span.right = rect->x + rect->width;
         }
         
-        if (r->y + r->height > span.bottom) {
-            span.bottom = r->y + r->height;
+        if (rect->y + rect->height > span.bottom) {
+            span.bottom = rect->y + rect->height;
         }
     }
 
-    return (s_rect){span.left, span.top, span.right - span.left, span.bottom - span.top};
+    return (s_rect){
+        span.left,
+        span.top,
+        span.right - span.left,
+        span.bottom - span.top
+    };
 }

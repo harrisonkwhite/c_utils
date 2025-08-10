@@ -47,29 +47,29 @@ void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs) {
     }
 }
 
-int Bitset_IndexOfFirstInactiveBit(const s_bitset bitset) {
+t_s32 Bitset_IndexOfFirstInactiveBit(const s_bitset bitset) {
     Bitset_AssertValidity(bitset);
 
-    for (int i = 0; i < (bitset.bit_cnt / 8); i++) {
+    for (t_s32 i = 0; i < (bitset.bit_cnt / 8); i++) {
         if (bitset.bytes[i] == 0xFF) {
             continue;
         }
 
-        for (int j = 0; j < 8; j++) {
+        for (t_s32 j = 0; j < 8; j++) {
             if (!(bitset.bytes[i] & (1 << j))) {
                 return (i * 8) + j;
             }
         }
     }
 
-    const int excess_bits = bitset.bit_cnt % 8;
+    const t_s32 excess_bits = bitset.bit_cnt % 8;
 
     if (excess_bits > 0) {
         // Get the last byte, masking out any bits we don't care about.
         const t_u8 last_byte = KeepFirstNBitsOfByte(bitset.bytes[bitset.bit_cnt / 8], excess_bits);
 
         if (last_byte != 0xFF) {
-            for (int i = 0; i < 8; i++) {
+            for (t_s32 i = 0; i < 8; i++) {
                 if (!(last_byte & (1 << i))) {
                     return bitset.bit_cnt - excess_bits + i;
                 }

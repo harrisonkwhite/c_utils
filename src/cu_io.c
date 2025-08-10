@@ -18,7 +18,7 @@ bool DoesFilenameHaveExt(const char* const filename, const char* const ext) {
 }
 #endif
 
-s_u8_array LoadFileContents(const s_str_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte) {
+s_u8_array LoadFileContents(const s_char_array_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte) {
     FILE* const fs = fopen(file_path.buf_raw, "rb");
 
     if (!fs) {
@@ -30,7 +30,7 @@ s_u8_array LoadFileContents(const s_str_view file_path, s_mem_arena* const mem_a
     const size_t file_size = ftell(fs);
     fseek(fs, 0, SEEK_SET);
 
-    const s_u8_array contents = PushU8Array(mem_arena, include_terminating_byte ? file_size + 1 : file_size);
+    const s_u8_array contents = PushU8ArrayToMemArena(mem_arena, include_terminating_byte ? file_size + 1 : file_size);
 
     if (IS_ZERO(contents)) {
         LOG_ERROR("Failed to reserve memory for the contents of file \"%s\"!", file_path.buf_raw);

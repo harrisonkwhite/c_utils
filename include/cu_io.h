@@ -5,6 +5,15 @@
 #include <stdio.h>
 #include "cu_mem.h"
 
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(path) _mkdir(path)
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#define MKDIR(path) mkdir(path, 0755)
+#endif
+
 #define ANSI_ESC "\x1b"
 
 #define ANSI_RESET ANSI_ESC "[0m"
@@ -54,6 +63,7 @@
 #define LOG_ERROR(format, ...) fprintf(stderr, ANSI_BOLD ANSI_FG_RED "Error: " ANSI_RESET format "\n", ##__VA_ARGS__)
 #define LOG_ERROR_SPECIAL(prefix, format, ...) fprintf(stderr, ANSI_BOLD ANSI_FG_BRED prefix " Error: " ANSI_RESET); \
     fprintf(stderr, format "\n", ##__VA_ARGS__)
+#define LOG_SUCCESS(format, ...) fprintf(stderr, ANSI_BOLD ANSI_FG_GREEN "Success: " ANSI_RESET format "\n", ##__VA_ARGS__)
 
 typedef char t_filename_buf[256];
 
@@ -63,12 +73,12 @@ typedef struct {
 } s_filenames;
 
 //bool DoesFilenameHaveExt(const char* const filename, const char* const ext);
-s_u8_array LoadFileContents(const s_str_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte);
+s_u8_array LoadFileContents(const s_char_array_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte);
 //bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem_arena, const char* const dir_param);
 
-static inline s_str LoadFileContentsAsStr(const s_str_view file_path, s_mem_arena* const mem_arena) {
+static inline s_char_array LoadFileContentsAsStr(const s_char_array_view file_path, s_mem_arena* const mem_arena) {
     const s_u8_array contents = LoadFileContents(file_path, mem_arena, true);
-    return (s_str){.buf_raw = (char*)contents.buf_raw, .len = contents.len};
+    return (s_char_array){.buf_raw = (char*)contents.buf_raw, .len = contents.len};
 }
 
 #endif
