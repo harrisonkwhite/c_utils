@@ -181,55 +181,34 @@ DEF_ARRAY_TYPE(t_s64, s64, S64);
 DEF_ARRAY_TYPE(t_u64, u64, U64);
 
 typedef struct {
-    t_u8* bytes;
+    s_u8_array bytes;
     size_t bit_cnt;
 } s_bitset;
 
-t_s32 Bitset_IndexOfFirstUnsetBit(const s_bitset bitset); // Returns -1 if there is no unset bit.
+typedef struct {
+    s_u8_array_view bytes;
+    size_t bit_cnt;
+} s_bitset_view;
 
-static inline void Bitset_AssertValidity(const s_bitset bitset) {
-    assert(bitset.bytes);
-    assert(bitset.bit_cnt > 0);
+t_s32 IndexOfFirstInactiveBit(const s_bitset_view bitset); // Returns -1 if there is no inactive bit.
+
+static inline s_bitset_view BitsetView(const s_bitset bitset) {
+    return (s_bitset_view){.bytes = U8ArrayView(bitset.bytes), .bit_cnt = bitset.bit_cnt};
 }
 
-static inline void Bitset_ActivateBit(const s_bitset bitset, const size_t bit_index) {
-    Bitset_AssertValidity(bitset);
+static inline void ActivateBit(const s_bitset bitset, const size_t bit_index) {
     assert(bit_index < bitset.bit_cnt);
-
-    bitset.bytes[bit_index / 8] |= 1 << (bit_index % 8);
+    *U8Elem(bitset.bytes, bit_index / 8) |= (1 << (bit_index % 8));
 }
 
-static inline void Bitset_DeactivateBit(const s_bitset bitset, const size_t bit_index) {
-    Bitset_AssertValidity(bitset);
+static inline void DeactivateBit(const s_bitset bitset, const size_t bit_index) {
     assert(bit_index < bitset.bit_cnt);
-
-    bitset.bytes[bit_index / 8] &= ~(1 << (bit_index % 8));
+    *U8Elem(bitset.bytes, bit_index / 8) &= ~(1 << (bit_index % 8));
 }
 
-static inline bool Bitset_IsBitActive(const s_bitset bitset, const size_t bit_index) {
-    Bitset_AssertValidity(bitset);
+static inline bool IsBitActive(const s_bitset_view bitset, const size_t bit_index) {
     assert(bit_index < bitset.bit_cnt);
-
-    return bitset.bytes[bit_index / 8] & (1 << (bit_index % 8));
+    return *U8ElemView(bitset.bytes, bit_index / 8) & (1 << (bit_index % 8));
 }
-
-#define DEF_STATIC_BITSET_TYPE(bit_cnt, name_snake, name_pascal) \
-    typedef t_byte t_##name_snake[BITS_TO_BYTES(bit_cnt)]; \
-    \
-    static inline void name_pascal##_ActivateBit(t_##name_snake* const bitset, const size_t bit_index) { \
-        Bitset_ActivateBit((s_bitset){*bitset, bit_cnt}, bit_index); \
-    } \
-    \
-    static inline void name_pascal##_DeactivateBit(t_##name_snake* const bitset, const size_t bit_index) { \
-        Bitset_DeactivateBit((s_bitset){*bitset, bit_cnt}, bit_index); \
-    } \
-    \
-    static inline bool name_pascal##_IsBitActive(const t_##name_snake* const bitset, const size_t bit_index) { \
-        return Bitset_IsBitActive((s_bitset){*bitset, bit_cnt}, bit_index); \
-    } \
-    \
-    static inline t_s32 name_pascal##_IndexOfFirstInactiveBit(const t_##name_snake* const bitset) { \
-        return Bitset_IndexOfFirstInactiveBit((s_bitset){*bitset, bit_cnt}); \
-    }
 
 #endif

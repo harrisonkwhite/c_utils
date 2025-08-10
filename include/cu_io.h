@@ -57,7 +57,7 @@
 #define ANSI_BG_WHITE ANSI_ESC "[47m"
 #define ANSI_BG_BWHITE ANSI_ESC "[107m"
 
-// Using macros here instead of functions so that we still get warnings for incorrect arguments, which are very important.
+// NOTE: Using macros here instead of functions so that there are still warnings for incorrect arguments.
 #define LOG(format, ...) printf(format "\n", ##__VA_ARGS__)
 #define LOG_WARNING(format, ...) fprintf(stderr, ANSI_BOLD ANSI_FG_YELLOW "Warning: " ANSI_RESET format "\n", ##__VA_ARGS__)
 #define LOG_ERROR(format, ...) fprintf(stderr, ANSI_BOLD ANSI_FG_RED "Error: " ANSI_RESET format "\n", ##__VA_ARGS__)
@@ -65,16 +65,7 @@
     fprintf(stderr, format "\n", ##__VA_ARGS__)
 #define LOG_SUCCESS(format, ...) fprintf(stderr, ANSI_BOLD ANSI_FG_GREEN "Success: " ANSI_RESET format "\n", ##__VA_ARGS__)
 
-typedef char t_filename_buf[256];
-
-typedef struct {
-    const t_filename_buf* buf;
-    int cnt;
-} s_filenames;
-
-//bool DoesFilenameHaveExt(const char* const filename, const char* const ext);
 s_u8_array LoadFileContents(const s_char_array_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte);
-//bool LoadDirectoryFilenames(s_filenames* const filenames, s_mem_arena* const mem_arena, const char* const dir_param);
 
 static inline s_char_array LoadFileContentsAsStr(const s_char_array_view file_path, s_mem_arena* const mem_arena) {
     const s_u8_array contents = LoadFileContents(file_path, mem_arena, true);

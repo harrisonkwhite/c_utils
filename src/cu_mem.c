@@ -4,8 +4,7 @@
 #include "cu_io.h"
 
 bool InitMemArena(s_mem_arena* const arena, const size_t size) {
-    assert(arena && IS_ZERO(*arena));
-    assert(size > 0);
+    assert(IS_ZERO(*arena));
 
     arena->buf = malloc(size);
 
@@ -22,6 +21,8 @@ bool InitMemArena(s_mem_arena* const arena, const size_t size) {
 }
 
 void CleanMemArena(s_mem_arena* const arena) {
+    assert(arena->buf);
+
     free(arena->buf);
     ZERO_OUT(*arena);
 }
@@ -41,22 +42,24 @@ void* PushToMemArena(s_mem_arena* const arena, const size_t size, const size_t a
 }
 
 void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs) {
+    assert(rewind_offs <= arena->offs);
+
     if (rewind_offs != arena->offs) {
         ZeroOut(arena->buf + rewind_offs, arena->offs - rewind_offs);
         arena->offs = rewind_offs;
     }
 }
 
-t_s32 Bitset_IndexOfFirstInactiveBit(const s_bitset bitset) {
-    Bitset_AssertValidity(bitset);
-
+t_s32 IndexOfFirstInactiveBit(const s_bitset_view bitset) {
     for (t_s32 i = 0; i < (bitset.bit_cnt / 8); i++) {
-        if (bitset.bytes[i] == 0xFF) {
+        const t_u8 byte = *U8ElemView(bitset.bytes, i);
+
+        if (byte == 0xFF) {
             continue;
         }
 
         for (t_s32 j = 0; j < 8; j++) {
-            if (!(bitset.bytes[i] & (1 << j))) {
+            if (!(byte & (1 << j))) {
                 return (i * 8) + j;
             }
         }
@@ -66,7 +69,7 @@ t_s32 Bitset_IndexOfFirstInactiveBit(const s_bitset bitset) {
 
     if (excess_bits > 0) {
         // Get the last byte, masking out any bits we don't care about.
-        const t_u8 last_byte = KeepFirstNBitsOfByte(bitset.bytes[bitset.bit_cnt / 8], excess_bits);
+        const t_u8 last_byte = KeepFirstNBitsOfByte(*U8ElemView(bitset.bytes, bitset.bit_cnt / 8), excess_bits);
 
         if (last_byte != 0xFF) {
             for (t_s32 i = 0; i < 8; i++) {
@@ -76,6 +79,6 @@ t_s32 Bitset_IndexOfFirstInactiveBit(const s_bitset bitset) {
             }
         }
     }
-    
+
     return -1;
 }
