@@ -50,16 +50,30 @@ DEF_ARRAY_TYPE(u_v3, v3, V3);
 
 typedef union {
     struct {
-        t_r32 x;
-        t_r32 y;
-        t_r32 z;
+        union {
+            u_v3 xyz;
+
+            struct {
+                t_r32 x;
+                t_r32 y;
+                t_r32 z;
+            };
+        };
+
         t_r32 w;
     };
 
     struct {
-        t_r32 r;
-        t_r32 g;
-        t_r32 b;
+        union {
+            u_v3 rgb;
+
+            struct {
+                t_r32 r;
+                t_r32 g;
+                t_r32 b;
+            };
+        };
+
         t_r32 a;
     };
 } u_v4;
