@@ -23,6 +23,8 @@ typedef struct {
 
 DEF_ARRAY_TYPE(s_v2, v2, V2);
 
+#define V2_ONE (s_v2){1.0f, 1.0f}
+
 typedef struct {
     t_s32 x;
     t_s32 y;
