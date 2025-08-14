@@ -98,54 +98,54 @@ void CleanMemArena(s_mem_arena* const arena);
 void* PushToMemArena(s_mem_arena* const arena, const size_t size, const size_t alignment);
 void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs);
 
-#define STATIC_ARRAY_LEN(array) (sizeof(array) / sizeof(array[0]))
+#define STATIC_ARRAY_LEN(array) (sizeof(array) / sizeof((array)[0]))
 
 #define STATIC_ARRAY_LEN_CHECK(array, ideal_len) static_assert(STATIC_ARRAY_LEN(array) == (ideal_len), "Invalid static array length!");
 
 #define STATIC_ARRAY_ELEM(array, index) ( \
         assert((index) >= 0 && (index) < STATIC_ARRAY_LEN(array)), \
-        &array[index] \
+        &(array)[index] \
     )
 
 #define STATIC_ARRAY_2D_ELEM(array, i, j) ( \
         assert((i) >= 0 && (i) < STATIC_ARRAY_LEN(array)), \
-        assert((j) >= 0 && (j) < STATIC_ARRAY_LEN(array[0])), \
-        &array[i][j] \
+        assert((j) >= 0 && (j) < STATIC_ARRAY_LEN((array)[0])), \
+        &(array)[i][j] \
     )
 
 #define STATIC_ARRAY_3D_ELEM(array, i, j, k) ( \
         assert((i) >= 0 && (i) < STATIC_ARRAY_LEN(array)), \
-        assert((j) >= 0 && (j) < STATIC_ARRAY_LEN(array[0])), \
-        assert((k) >= 0 && (k) < STATIC_ARRAY_LEN(array[0][0])), \
-        &array[i][j][k] \
+        assert((j) >= 0 && (j) < STATIC_ARRAY_LEN((array)[0])), \
+        assert((k) >= 0 && (k) < STATIC_ARRAY_LEN((array)[0][0])), \
+        &(array)[i][j][k] \
     )
 
 #define DEF_ARRAY_TYPE(type, name_snake, name_pascal) \
     typedef struct { \
         type* buf_raw; \
-        t_s32 len; \
+        t_s32 elem_cnt; \
     } s_##name_snake##_array; \
     \
     typedef struct { \
         const type* buf_raw; \
-        t_s32 len; \
+        t_s32 elem_cnt; \
     } s_##name_snake##_array_view; \
     \
     static inline s_##name_snake##_array_view name_pascal##ArrayView(const s_##name_snake##_array array) { \
-        return (s_##name_snake##_array_view){.buf_raw = array.buf_raw, .len = array.len}; \
+        return (s_##name_snake##_array_view){.buf_raw = array.buf_raw, .elem_cnt = array.elem_cnt}; \
     } \
     \
     static inline type* name_pascal##Elem(const s_##name_snake##_array array, const t_s32 index) { \
-        assert(index >= 0 && index < array.len); \
+        assert(index >= 0 && index < array.elem_cnt); \
         return &array.buf_raw[index]; \
     } \
     static inline const type* name_pascal##ElemView(const s_##name_snake##_array_view array, const t_s32 index) { \
-        assert(index >= 0 && index < array.len); \
+        assert(index >= 0 && index < array.elem_cnt); \
         return &array.buf_raw[index]; \
     } \
     \
-    static inline s_##name_snake##_array Push##name_pascal##ArrayToMemArena(s_mem_arena* const arena, const t_s32 cnt) { \
-        type* const buf = PushToMemArena(arena, sizeof(type) * (cnt), ALIGN_OF(type)); \
+    static inline s_##name_snake##_array Push##name_pascal##ArrayToMemArena(s_mem_arena* const arena, const t_s32 elem_cnt) { \
+        type* const buf = PushToMemArena(arena, sizeof(type) * (elem_cnt), ALIGN_OF(type)); \
         \
         if (!buf) { \
             return (s_##name_snake##_array){0}; \
@@ -153,16 +153,34 @@ void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs);
         \
         return (s_##name_snake##_array){ \
             .buf_raw = buf, \
-            .len = cnt \
+            .elem_cnt = elem_cnt \
         }; \
     }
 
-#define ARRAY_FROM_STATIC(array_type, static_array) (array_type){.buf_raw = static_array, .len = STATIC_ARRAY_LEN(static_array)}
+#define ARRAY_FROM_STATIC(array_type, static_array) (array_type){.buf_raw = static_array, .elem_cnt = STATIC_ARRAY_LEN(static_array)}
 
 DEF_ARRAY_TYPE(char, char, Char);
 
+static inline s_char_array StrFromRawTerminated(char* const raw) {
+    return (s_char_array){
+        .buf_raw = raw, .elem_cnt = strlen(raw) + 1
+    };
+}
+
+static inline s_char_array_view StrViewFromRawTerminated(const char* const raw) {
+    return (s_char_array_view){
+        .buf_raw = raw, .elem_cnt = strlen(raw) + 1
+    };
+}
+
 static inline bool IsStrTerminated(const s_char_array_view str) {
-    return *CharElemView(str, str.len - 1) == '\0';
+    for (int i = 0; i < str.elem_cnt; i++) {
+        if (!*CharElemView(str, i)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 DEF_ARRAY_TYPE(s_char_array, char_array, CharArray);
@@ -190,44 +208,44 @@ typedef struct {
     size_t bit_cnt;
 } s_bitset_view;
 
-t_s32 IndexOfFirstInactiveBit(const s_bitset_view bitset); // Returns -1 if there is no inactive bit.
+t_s32 IndexOfFirstUnsetBit(const s_bitset_view bitset); // Returns -1 if there is no inactive bit.
 
 static inline s_bitset_view BitsetView(const s_bitset bitset) {
     return (s_bitset_view){.bytes = U8ArrayView(bitset.bytes), .bit_cnt = bitset.bit_cnt};
 }
 
-static inline void ActivateBit(const s_bitset bitset, const size_t bit_index) {
+static inline void SetBit(const s_bitset bitset, const size_t bit_index) {
     assert(bit_index < bitset.bit_cnt);
     *U8Elem(bitset.bytes, bit_index / 8) |= (1 << (bit_index % 8));
 }
 
-static inline void DeactivateBit(const s_bitset bitset, const size_t bit_index) {
+static inline void UnsetBit(const s_bitset bitset, const size_t bit_index) {
     assert(bit_index < bitset.bit_cnt);
     *U8Elem(bitset.bytes, bit_index / 8) &= ~(1 << (bit_index % 8));
 }
 
-static inline bool IsBitActive(const s_bitset_view bitset, const size_t bit_index) {
+static inline bool IsBitSet(const s_bitset_view bitset, const size_t bit_index) {
     assert(bit_index < bitset.bit_cnt);
     return *U8ElemView(bitset.bytes, bit_index / 8) & (1 << (bit_index % 8));
 }
 
-#define DEF_STATIC_BITSET_TYPE(name, _bit_cnt) \
-    typedef t_u8 t_##name[BITS_TO_BYTES(_bit_cnt)]; \
+#define DEF_STATIC_BITSET_TYPE(name_snake, name_pascal, _bit_cnt) \
+    typedef t_u8 t_##name_snake[BITS_TO_BYTES(_bit_cnt)]; \
     \
-    static inline void Activate##name##Bit(t_##name* const bitset, const size_t bit_index) { \
-        ActivateBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+    static inline void Set##name_pascal##Bit(t_##name_snake* const bitset, const size_t bit_index) { \
+        SetBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
     } \
     \
-    static inline void Deactivate##name##Bit(t_##name* const bitset, const size_t bit_index) { \
-        DeactivateBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+    static inline void Unset##name_pascal##Bit(t_##name_snake* const bitset, const size_t bit_index) { \
+        UnsetBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
     } \
     \
-    static inline bool Is##name##BitActive(const t_##name* const bitset, const size_t bit_index) { \
-        return IsBitActive((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+    static inline bool Is##name_pascal##BitSet(const t_##name_snake* const bitset, const size_t bit_index) { \
+        return IsBitSet((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
     } \
     \
-    static inline t_s32 FirstInactive##name##BitIndex(const t_##name* const bitset) { \
-        return IndexOfFirstInactiveBit((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}); \
+    static inline t_s32 FirstUnset##name_pascal##BitIndex(const t_##name_snake* const bitset) { \
+        return IndexOfFirstUnsetBit((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}); \
     }
 
 #endif

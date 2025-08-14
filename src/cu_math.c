@@ -8,7 +8,7 @@ s_rect GenSpanningRect(const s_rect_array_view rects) {
         RectElemView(rects, 0)->y + RectElemView(rects, 0)->height
     };
 
-    for (t_s32 i = 1; i < rects.len; ++i) {
+    for (t_s32 i = 1; i < rects.elem_cnt; ++i) {
         const s_rect* const rect = RectElemView(rects, i);
 
         if (rect->x < span.left) {

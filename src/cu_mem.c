@@ -50,7 +50,7 @@ void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs) {
     }
 }
 
-t_s32 IndexOfFirstInactiveBit(const s_bitset_view bitset) {
+t_s32 IndexOfFirstUnsetBit(const s_bitset_view bitset) {
     for (t_s32 i = 0; i < (bitset.bit_cnt / 8); i++) {
         const t_u8 byte = *U8ElemView(bitset.bytes, i);
 

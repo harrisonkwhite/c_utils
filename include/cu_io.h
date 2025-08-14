@@ -65,11 +65,18 @@
     fprintf(stderr, format "\n", ##__VA_ARGS__)
 #define LOG_SUCCESS(format, ...) fprintf(stderr, ANSI_BOLD ANSI_FG_GREEN "Success: " ANSI_RESET format "\n", ##__VA_ARGS__)
 
+typedef char t_filename_buf[256];
+
+DEF_ARRAY_TYPE(t_filename_buf, filename_buf, FilenameBuf);
+
+bool DoesFilenameHaveExt(const s_char_array_view filename, const s_char_array_view ext);
+bool LoadDirFilenames(s_filename_buf_array* const filename_bufs, s_mem_arena* const mem_arena, const s_char_array_view dir_param);
+
 s_u8_array LoadFileContents(const s_char_array_view file_path, s_mem_arena* const mem_arena, const bool include_terminating_byte);
 
 static inline s_char_array LoadFileContentsAsStr(const s_char_array_view file_path, s_mem_arena* const mem_arena) {
     const s_u8_array contents = LoadFileContents(file_path, mem_arena, true);
-    return (s_char_array){.buf_raw = (char*)contents.buf_raw, .len = contents.len};
+    return (s_char_array){.buf_raw = (char*)contents.buf_raw, .elem_cnt = contents.elem_cnt};
 }
 
 #endif
