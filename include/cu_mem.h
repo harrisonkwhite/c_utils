@@ -157,7 +157,7 @@ void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs);
         }; \
     }
 
-#define ARRAY_FROM_STATIC(array_type, static_array) (array_type){.buf_raw = static_array, .elem_cnt = STATIC_ARRAY_LEN(static_array)}
+#define ARRAY_FROM_STATIC(static_array) {.buf_raw = static_array, .elem_cnt = STATIC_ARRAY_LEN(static_array)}
 
 DEF_ARRAY_TYPE(char, char, Char);
 
@@ -233,19 +233,19 @@ static inline bool IsBitSet(const s_bitset_view bitset, const size_t bit_index) 
     typedef t_u8 t_##name_snake[BITS_TO_BYTES(_bit_cnt)]; \
     \
     static inline void Set##name_pascal##Bit(t_##name_snake* const bitset, const size_t bit_index) { \
-        SetBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+        SetBit((s_bitset){.bytes = ARRAY_FROM_STATIC(*bitset), .bit_cnt = _bit_cnt}, bit_index); \
     } \
     \
     static inline void Unset##name_pascal##Bit(t_##name_snake* const bitset, const size_t bit_index) { \
-        UnsetBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+        UnsetBit((s_bitset){.bytes = ARRAY_FROM_STATIC(*bitset), .bit_cnt = _bit_cnt}, bit_index); \
     } \
     \
     static inline bool Is##name_pascal##BitSet(const t_##name_snake* const bitset, const size_t bit_index) { \
-        return IsBitSet((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+        return IsBitSet((s_bitset_view){.bytes = ARRAY_FROM_STATIC(*bitset), .bit_cnt = _bit_cnt}, bit_index); \
     } \
     \
     static inline t_s32 FirstUnset##name_pascal##BitIndex(const t_##name_snake* const bitset) { \
-        return IndexOfFirstUnsetBit((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}); \
+        return IndexOfFirstUnsetBit((s_bitset_view){.bytes = ARRAY_FROM_STATIC(*bitset), .bit_cnt = _bit_cnt}); \
     }
 
 #endif

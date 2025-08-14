@@ -13,6 +13,8 @@ target_include_directories(c_utils PUBLIC
     include
 )
 
-target_link_libraries(c_utils PUBLIC
-    m
-)
+if (NOT MSVC)
+    target_link_libraries(c_utils PUBLIC
+        m
+    )
+endif()

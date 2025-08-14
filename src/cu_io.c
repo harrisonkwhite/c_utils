@@ -27,7 +27,7 @@ bool LoadDirFilenames(s_filename_buf_array* const filename_bufs, s_mem_arena* co
 
 #if defined(_WIN32)
     char search_path[MAX_PATH];
-    snprintf(search_path, MAX_PATH, "%s\\*", dir_param);
+    snprintf(search_path, MAX_PATH, "%s\\*", dir_param.buf_raw);
 
     WIN32_FIND_DATAA find_data;
     HANDLE find = FindFirstFileA(search_path, &find_data);
@@ -37,10 +37,10 @@ bool LoadDirFilenames(s_filename_buf_array* const filename_bufs, s_mem_arena* co
     }
 
     do {
-        t_filename* const filename = PushToMemArena(mem_arena, sizeof(t_filename), ALIGN_OF(t_filename));
+        t_filename_buf* const filename = PushToMemArena(mem_arena, sizeof(t_filename_buf), ALIGN_OF(t_filename_buf));
 
         if (!filename) {
-            FindClose(ha);
+            FindClose(find);
             return false;
         }
 
