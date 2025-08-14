@@ -211,4 +211,23 @@ static inline bool IsBitActive(const s_bitset_view bitset, const size_t bit_inde
     return *U8ElemView(bitset.bytes, bit_index / 8) & (1 << (bit_index % 8));
 }
 
+#define DEF_STATIC_BITSET_TYPE(name, _bit_cnt) \
+    typedef t_u8 t_##name[BITS_TO_BYTES(_bit_cnt)]; \
+    \
+    static inline void Activate##name##Bit(t_##name* const bitset, const size_t bit_index) { \
+        ActivateBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+    } \
+    \
+    static inline void Deactivate##name##Bit(t_##name* const bitset, const size_t bit_index) { \
+        DeactivateBit((s_bitset){.bytes = ARRAY_FROM_STATIC(s_u8_array, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+    } \
+    \
+    static inline bool Is##name##BitActive(const t_##name* const bitset, const size_t bit_index) { \
+        return IsBitActive((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}, bit_index); \
+    } \
+    \
+    static inline t_s32 FirstInactive##name##BitIndex(const t_##name* const bitset) { \
+        return IndexOfFirstInactiveBit((s_bitset_view){.bytes = ARRAY_FROM_STATIC(s_u8_array_view, *bitset), .bit_cnt = _bit_cnt}); \
+    }
+
 #endif
