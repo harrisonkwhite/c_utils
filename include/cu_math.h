@@ -97,6 +97,22 @@ static inline s_v2 V2Scaled(const s_v2 v, const t_r32 scalar) {
     return (s_v2){v.x * scalar, v.y * scalar};
 }
 
+static inline bool V2sEqual(const s_v2 a, const s_v2 b) {
+    return a.x == b.x && a.y == b.y;
+}
+
+static inline bool V2S32sEqual(const s_v2_s32 a, const s_v2_s32 b) {
+    return a.x == b.x && a.y == b.y;
+}
+
+static inline bool V3sEqual(const u_v3 a, const u_v3 b) {
+    return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+static inline bool V4sEqual(const u_v4 a, const u_v4 b) {
+    return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
+}
+
 static inline t_r32 Mag(const s_v2 v) {
     return sqrtf(v.x * v.x + v.y * v.y);
 }
