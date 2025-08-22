@@ -17,9 +17,3 @@ add_library(c_utils STATIC
 target_include_directories(c_utils PUBLIC
     include
 )
-
-if (NOT MSVC)
-    target_link_libraries(c_utils PUBLIC
-        m
-    )
-endif()

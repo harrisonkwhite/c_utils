@@ -6,7 +6,7 @@ This library contains utilities that I use on a regular basis across many C proj
 
 ## Building
 
-Building and running this project has been tested on Linux and Windows.
+Building and running this project has only been tested on Windows.
 
 Clone the repository by running `git clone https://github.com/harrisonkwhite/c_utils.git`.
 
@@ -17,7 +17,5 @@ mkdir build
 cd build
 cmake ..
 ```
-
-You can also use the "build.sh" shell script if on a platform which supports it.
 
 ---
