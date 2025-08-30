@@ -218,6 +218,10 @@ static inline s_rect_s32 RectTranslatedS32(const s_rect_s32 rect, const s_v2_s32
     return (s_rect_s32){rect.x + trans.x, rect.y + trans.y, rect.width, rect.height};
 }
 
+s_rect RectWithOrigin(const s_v2 pos, const s_v2 size, const s_v2 origin) {
+    return (s_rect){pos.x - (size.x * origin.x), pos.y - (size.y * origin.y), size.x, size.y};
+}
+
 static inline bool IsPointInRect(const s_v2 pt, const s_rect rect) {
     return pt.x >= rect.x && pt.y >= rect.y && pt.x < rect.x + rect.width && pt.y < rect.y + rect.height;
 }
