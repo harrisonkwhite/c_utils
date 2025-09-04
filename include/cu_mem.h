@@ -144,6 +144,24 @@ void RewindMemArena(s_mem_arena* const arena, const size_t rewind_offs);
         return &array.buf_raw[index]; \
     } \
     \
+    static inline s_##name_snake##_array name_pascal##ArraySlice(const s_##name_snake##_array array, const int beg, const int end) { \
+        assert(end >= beg); \
+        assert(beg >= 0 && end <= array.elem_cnt); \
+    \
+        return (s_##name_snake##_array){ \
+            .buf_raw = array.buf_raw + beg, \
+            .elem_cnt = end - beg \
+        }; \
+    } \
+    static inline s_##name_snake##_array_view name_pascal##ArrayViewSlice(const s_##name_snake##_array_view array, const int beg, const int end) { \
+        assert(end >= beg); \
+        assert(beg >= 0 && end <= array.elem_cnt); \
+    \
+        return (s_##name_snake##_array_view){ \
+            .buf_raw = array.buf_raw + beg, \
+            .elem_cnt = end - beg \
+        }; \
+    } \
     static inline s_##name_snake##_array Push##name_pascal##ArrayToMemArena(s_mem_arena* const arena, const t_s32 elem_cnt) { \
         type* const buf = PushToMemArena(arena, sizeof(type) * (elem_cnt), ALIGN_OF(type)); \
         \
