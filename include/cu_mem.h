@@ -2,6 +2,8 @@
 
 #include <cstring>
 #include <cassert>
+#include <cstdlib>
+#include <type_traits>
 
 using t_s8 = char;
 using t_u8 = unsigned char;
@@ -51,7 +53,7 @@ template<typename tp_type>
 class c_array {
 public:
     c_array() = default;
-    c_array(tp_type* const buf, const int len) : m_buf(buf), m_len(len) {};
+    c_array(tp_type* const buf, const int len) : m_buf(buf), m_len(len) {}
 
     tp_type* Raw() const {
         return m_buf;
@@ -85,15 +87,22 @@ private:
 template<typename tp_type, int tp_len>
 class c_static_array {
 public:
-    tp_type* Raw() const {
-        return m_buf;
+    c_static_array(const tp_type (&arr)[tp_len]) {
+        for (int i = 0; i < tp_len; i++) {
+            m_buf[i] = arr[i];
+        }
     }
 
     int Len() const {
         return tp_len;
     }
 
-    tp_type& operator[](const int index) const {
+    tp_type& operator[](const int index) {
+        assert(index >= 0 && index < tp_len);
+        return m_buf[index];
+    }
+
+    const tp_type& operator[](const int index) const {
         assert(index >= 0 && index < tp_len);
         return m_buf[index];
     }
@@ -114,6 +123,7 @@ template<typename tp_type>
 class c_stack {
 public:
     c_stack() = default;
+    c_stack(const c_array<tp_type> arr, const int height = 0) : m_arr(arr), m_height(height) {}
 
     int Capacity() {
         return m_arr.Len();
@@ -159,17 +169,27 @@ class c_bitset {
 public:
     c_bitset() = default;
 
-    c_bitset(const c_array<t_u8> bytes, const int bit_cnt) : m_bytes(bytes), m_bit_cnt(bit_cnt) {
+    c_bitset(const c_array<t_u8> bytes, const size_t bit_cnt) : m_bytes(bytes), m_bit_cnt(bit_cnt) {
         assert(bit_cnt <= 8 * bytes.Len());
     }
 
     bool IsBitActive(const size_t index) {
         assert(index < m_bit_cnt);
-        return m_bytes[index / 8] & (1 << (index % 8));
+        return m_bytes[index / 8] & BitMask(index);
+    }
+
+    void SetBit(const size_t index) {
+        assert(index < m_bit_cnt);
+        m_bytes[index / 8] |= BitMask(index);
+    }
+
+    void UnsetBit(const size_t index) {
+        assert(index < m_bit_cnt);
+        m_bytes[index / 8] &= ~BitMask(index);
     }
 
     void ShiftLeft(int amount, const bool rot = false) {
-        assert(amount >= 0 && amount <= m_bit_cnt);
+        assert(amount >= 0);
 
         while (amount >= 0) {
             const int iter_shift_amount = Min(amount, 8);
@@ -203,8 +223,12 @@ public:
     }
 
 private:
+    t_u8 BitMask(const size_t index) {
+        return 1 << (index % 8);
+    }
+
     c_array<t_u8> m_bytes;
-    int m_bit_cnt;
+    size_t m_bit_cnt;
 };
 
 /*template<typename tp_type>
@@ -249,51 +273,81 @@ private:
 
 class c_mem_arena {
 public:
-    c_mem_arena() = default;
+    bool Init(const size_t size) {
+        assert(!m_buf);
 
-    ~c_mem_arena() {
-        assert(!m_buf && "Arena buffer not freed!");
+        m_buf = static_cast<t_u8*>(calloc(size, 1));
+
+        if (!m_buf) {
+            //LOG_ERROR("Failed to initialise memory arena of size %zu bytes!", size);
+            return false;
+        }
+
+        m_size = size;
+
+        return true;
     }
 
-    bool Init(const size_t size);
-    void Clean();
-    void Rewind(const size_t offs);
+    void Clean() {
+        assert(m_buf);
 
-    void* PushRaw(const size_t size, const size_t alignment);
+        free(m_buf);
+        m_buf = nullptr;
+        m_size = 0;
+        m_offs = 0;
+    }
+
+    void* PushRaw(const size_t size, const size_t alignment) {
+        const size_t offs_aligned = AlignForward(m_offs, alignment);
+        const size_t offs_next = offs_aligned + size;
+
+        if (offs_next > m_size) {
+            //LOG_ERROR("Failed to push %zu bytes to memory arena!", size);
+            return nullptr;
+        }
+
+        m_offs = offs_next;
+
+        return m_buf + offs_aligned;
+    }
 
     template<typename tp_type>
-    tp_type* Push(size_t cnt) {
-        void* mem = PushRaw(sizeof(tp_type), alignof(tp_type));
+    tp_type* Push() {
+        static_assert(std::is_trivially_destructible_v<tp_type>);
 
-        if (mem) {
-            new (mem) tp_type();
+        tp_type* const ptr = static_cast<tp_type*>(PushRaw(sizeof(tp_type), alignof(tp_type)));
+
+        if (ptr) {
+            new (ptr) tp_type();
         }
 
-        return mem;
-    }
-
-    template<typename tp_type>
-    c_array<tp_type> PushArray(size_t cnt) {
-        void* mem = PushRaw(sizeof(tp_type) * cnt, alignof(tp_type));
-
-        if (!mem) {
-            return {};
-        }
-
-        tp_type* arr = reinterpret_cast<tp_type*>(mem);
-
-        for (size_t i = 0; i < cnt; ++i) {
-            new (&arr[i]) tp_type();
-        }
-
-        return {arr, cnt};
-    }
+        return ptr;
+    } 
 
 private:
     t_u8* m_buf = nullptr;
     size_t m_size = 0;
     size_t m_offs = 0;
 };
+
+template<typename tp_type>
+c_array<tp_type> PushArrayToMemArena(c_mem_arena& arena, const int cnt) {
+    static_assert(std::is_trivially_destructible_v<tp_type>);
+
+    void* const mem = arena.PushRaw(sizeof(tp_type) * cnt, alignof(tp_type));
+
+    if (!mem) {
+        return {};
+    }
+
+    tp_type* const arr_raw = reinterpret_cast<tp_type*>(mem);
+
+    for (size_t i = 0; i < cnt; i++) {
+        new (&arr_raw[i]) tp_type();
+    }
+
+    return {arr_raw, cnt};
+}
 
 template<typename tp_type>
 bool IsSorted(const c_array<const tp_type> arr) {
@@ -304,6 +358,26 @@ bool IsSorted(const c_array<const tp_type> arr) {
     }
 
     return true;
+}
+
+template<typename tp_type>
+void BubbleSort(const c_array<tp_type> arr) {
+    bool sorted;
+
+    do {
+        sorted = true;
+
+        for (int i = 0; i < arr.Len() - 1; i++) {
+            if (arr[i] >= arr[i + 1]) {
+                const tp_type next_old = arr[i + 1];
+                arr[i + 1] = arr[i];
+                arr[i] = next_old;
+
+                sorted = false;
+                break;
+            }
+        }
+    } while (!sorted);
 }
 
 template<typename tp_type>
