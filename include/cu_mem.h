@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <type_traits>
 
+#define CU_SIZE_IN_BITS(x) (sizeof(x) * 8)
+
 using t_s8 = char;
 using t_u8 = unsigned char;
 using t_s16 = short;
@@ -29,18 +31,18 @@ constexpr size_t Megabytes(const size_t x) { return (static_cast<size_t>(1) << 2
 constexpr size_t Gigabytes(const size_t x) { return (static_cast<size_t>(1) << 30) * x; }
 constexpr size_t Terabytes(const size_t x) { return (static_cast<size_t>(1) << 40) * x; }
 
-constexpr size_t BitsToBytes(size_t x) { return (x + 7) / 8; }
-constexpr size_t BytesToBits(size_t x) { return x * 8; }
+constexpr size_t BitsToBytes(const size_t x) { return (x + 7) / 8; }
+constexpr size_t BytesToBits(const size_t x) { return x * 8; }
 
-static constexpr bool IsPowerOfTwo(const size_t n) {
+constexpr bool IsPowerOfTwo(const size_t n) {
     return n > 0 && (n & (n - 1)) == 0;
 }
 
-static constexpr bool IsAlignmentValid(const size_t n) {
+constexpr bool IsAlignmentValid(const size_t n) {
     return n > 0 && IsPowerOfTwo(n);
 }
 
-static constexpr size_t AlignForward(const size_t n, const size_t alignment) {
+constexpr size_t AlignForward(const size_t n, const size_t alignment) {
     return (n + alignment - 1) & ~(alignment - 1);
 }
 
@@ -48,6 +50,33 @@ static inline size_t IndexFrom2D(const size_t x, const size_t y, const size_t wi
     assert(x < width);
     return (width * y) + x;
 }
+
+/*#include <cstdio>
+
+class c_file_reader {
+public:
+    ~c_file_reader() {
+        if (m_fs) {
+            fclose(m_fs);
+        }
+    }
+
+    bool Open(const c_array<const char> file_path) {
+        m_fs = fopen(file_path, "rb");
+        return m_fs;
+    }
+
+    template<typename tp_type>
+    [[nodiscard]] tp_type ReadNext() {
+    }
+
+    template<typename tp_type>
+    [[nodiscard]] int ReadInto(const c_array<tp_type> arr) {
+    }
+
+private:
+    FILE* m_fs;
+};*/
 
 template<typename tp_type>
 class c_array {
@@ -79,6 +108,10 @@ public:
         return {m_buf + beg, end - beg};
     }
 
+    c_array<const tp_type> View() const {
+        return {m_buf, m_len};
+    }
+
 private:
     tp_type* m_buf = nullptr;
     int m_len = 0;
@@ -107,11 +140,11 @@ public:
         return m_buf[index];
     }
 
-    c_array<tp_type> Array() {
+    c_array<tp_type> Nonstatic() {
         return {m_buf, tp_len};
     }
 
-    c_array<const tp_type> Array() const {
+    c_array<const tp_type> Nonstatic() const {
         return {m_buf, tp_len};
     }
 
