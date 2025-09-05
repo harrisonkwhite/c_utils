@@ -1,19 +1,17 @@
 cmake_minimum_required(VERSION 3.28)
-project(c_utils C)
+project(cpp_utils CXX)
 
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(c_utils STATIC
-    src/cu_mem.c
-    src/cu_math.c
-    src/cu_io.c
+add_library(cpp_utils STATIC
+    src/cu_mem.cpp
 
     include/cu.h
-    include/cu_io.h
     include/cu_math.h
     include/cu_mem.h
 )
 
-target_include_directories(c_utils PUBLIC
+target_include_directories(cpp_utils PUBLIC
     include
 )
