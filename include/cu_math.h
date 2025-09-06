@@ -4,6 +4,9 @@
 #include <cassert>
 #include "cu_mem.h"
 
+constexpr float g_pi = 3.14159265358979323846f;
+constexpr float g_tau = 6.28318530717958647692f;
+
 struct s_v2 {
     float x = 0.0f;
     float y = 0.0f;
@@ -142,3 +145,7 @@ struct s_rect_edges {
     float right;
     float bottom;
 };
+
+static inline s_v2 LenDir(const float len, const float dir) {
+    return {cosf(dir) * len, -sinf(dir) * len};
+}

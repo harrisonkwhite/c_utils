@@ -120,6 +120,8 @@ private:
 template<typename tp_type, int tp_len>
 class c_static_array {
 public:
+    c_static_array() = default;
+
     c_static_array(const tp_type (&arr)[tp_len]) {
         for (int i = 0; i < tp_len; i++) {
             m_buf[i] = arr[i];
@@ -355,7 +357,12 @@ public:
         }
 
         return ptr;
-    } 
+    }
+
+    void Rewind(const size_t offs) {
+        assert(offs <= m_size);
+        m_offs = offs;
+    }
 
 private:
     t_u8* m_buf = nullptr;
